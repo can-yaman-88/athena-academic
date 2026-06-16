@@ -1,4 +1,4 @@
-"""LangGraph workflow for Jarvis-Academic.
+"""LangGraph workflow for Athena-Academic.
 
 The graph is intentionally small and explicit:
 
@@ -49,10 +49,10 @@ from core.schemas import (
     TaskCategory,
     TaskStatus,
 )
-from core.state import JarvisState, RouteTarget
+from core.state import AthenaState, RouteTarget
 from core.tools import add_task, process_pdf
 
-logger = logging.getLogger("jarvis.graph")
+logger = logging.getLogger("athena.graph")
 
 # Maps a routing target to the tool name a node will surface in active_tool.
 _TOOL_FOR_ROUTE: dict[RouteTarget, Optional[str]] = {
@@ -91,7 +91,7 @@ def _make_llm(
         api_key=api_key,
         max_tokens=max_tokens,
         # Optional attribution headers recommended by OpenRouter.
-        default_headers={"X-Title": "Jarvis-Academic"},
+        default_headers={"X-Title": "Athena-Academic"},
     )
     if temperature is not None:
         kwargs["temperature"] = temperature
@@ -165,7 +165,7 @@ def _resolve_deadline(value: Optional[str], now: datetime) -> datetime:
     )
 
 
-def _attachments_text(state: JarvisState) -> str:
+def _attachments_text(state: AthenaState) -> str:
     """Concatenate the markdown of any chat-attached materials in the state."""
     parts: list[str] = []
     for att in state.get("attachments") or []:
@@ -265,7 +265,7 @@ def _resolve_task_by_name(
 # --------------------------------------------------------------------------- #
 # Nodes
 # --------------------------------------------------------------------------- #
-def router_node(state: JarvisState, *, router_llm: Any) -> dict[str, Any]:
+def router_node(state: AthenaState, *, router_llm: Any) -> dict[str, Any]:
     """Classify the latest message and record the routing decision.
 
     A leading slash command bypasses the LLM router entirely (deterministic).
@@ -295,7 +295,7 @@ def router_node(state: JarvisState, *, router_llm: Any) -> dict[str, Any]:
 
 
 def chat_node(
-    state: JarvisState, *, chat_llm: Any, chroma: Any = None
+    state: AthenaState, *, chat_llm: Any, chroma: Any = None
 ) -> dict[str, Any]:
     """Answer conversationally, grounded in retrieved document context."""
     # /yardim is deterministic — list commands without an LLM call.
@@ -330,7 +330,7 @@ def chat_node(
     }
 
 
-def pdf_tool_node(state: JarvisState) -> dict[str, Any]:
+def pdf_tool_node(state: AthenaState) -> dict[str, Any]:
     """Execute the (mocked) PDF processing tool."""
     user_text = _last_human_message(state["messages"])
     match = _PDF_PATH_RE.search(user_text)
@@ -342,7 +342,7 @@ def pdf_tool_node(state: JarvisState) -> dict[str, Any]:
     }
 
 
-def _materials_from_attachments(state: JarvisState) -> list[Material]:
+def _materials_from_attachments(state: AthenaState) -> list[Material]:
     mats: list[Material] = []
     for att in state.get("attachments") or []:
         if not isinstance(att, dict):
@@ -394,7 +394,7 @@ async def _generate_subtasks(
 
 
 async def task_tool_node(
-    state: JarvisState,
+    state: AthenaState,
     *,
     task_extractor_llm: Any = None,
     sqlite_manager: Any = None,
@@ -592,7 +592,7 @@ async def task_tool_node(
 
 
 async def workout_tool_node(
-    state: JarvisState,
+    state: AthenaState,
     *,
     workout_extractor_llm: Any = None,
     sqlite_manager: Any = None,
@@ -643,7 +643,7 @@ async def workout_tool_node(
     }
 
 
-def route_selector(state: JarvisState) -> RouteTarget:
+def route_selector(state: AthenaState) -> RouteTarget:
     """Conditional-edge function: send the run to the router's chosen node."""
     return state.get("route") or "chat_node"
 
@@ -651,7 +651,7 @@ def route_selector(state: JarvisState) -> RouteTarget:
 # --------------------------------------------------------------------------- #
 # Graph assembly
 # --------------------------------------------------------------------------- #
-def build_jarvis_graph(
+def build_athena_graph(
     *,
     router_llm: Any = None,
     chat_llm: Any = None,
@@ -662,7 +662,7 @@ def build_jarvis_graph(
     subtask_llm: Any = None,
     usage_callback: Any = None,
 ) -> Any:
-    """Build and compile the Jarvis-Academic routing graph.
+    """Build and compile the Athena-Academic routing graph.
 
     Args:
         router_llm: A runnable whose ``.invoke()`` returns a ``RouteDecision``.
@@ -705,7 +705,7 @@ def build_jarvis_graph(
             except Exception:  # pragma: no cover - missing key/package
                 subtask_llm = None
 
-    builder = StateGraph(JarvisState)
+    builder = StateGraph(AthenaState)
     builder.add_node("router_node", partial(router_node, router_llm=router_llm))
     builder.add_node(
         "chat_node", partial(chat_node, chat_llm=chat_llm, chroma=chroma_manager)
@@ -749,7 +749,7 @@ def build_jarvis_graph(
 
 
 __all__ = [
-    "build_jarvis_graph",
+    "build_athena_graph",
     "chat_node",
     "pdf_tool_node",
     "route_selector",

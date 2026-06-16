@@ -21,7 +21,7 @@ const COMMANDS = [
 
 export default function ChatTerminal() {
   const [lines, setLines] = useState<Line[]>([
-    { role: "system", text: "Jarvis-Academic hazır. Soru sor, görev/PDF/antrenman iste, ya da /yardim yaz." },
+    { role: "system", text: "Athena-Academic hazır. Soru sor, görev/PDF/antrenman iste, ya da /yardim yaz." },
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);

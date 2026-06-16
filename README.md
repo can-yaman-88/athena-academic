@@ -1,4 +1,4 @@
-# Jarvis-Academic
+# Athena-Academic
 
 Otonom, ajan tabanlı (agentic) bir akademik asistan sistemi. PDF ders materyallerini
 **tam bir boru hattıyla** işler (OCR/Markdown → LaTeX ders notu → derlenmiş PDF →
@@ -74,7 +74,7 @@ Sistem birbirine geçen beş katmandan oluşur:
 ```
 Tarayıcı (React SPA :8088)  ──HTTP/SSE──>  FastAPI (:8888)
                                               ├── LangGraph ajanı ──> OpenRouter
-                                              ├── SQLiteManager  ──> data/jarvis.db
+                                              ├── SQLiteManager  ──> data/athena.db
                                               ├── ChromaManager  ──> data/chroma/
                                               └── PDF motoru (arka plan görevi)
 ```
@@ -275,7 +275,7 @@ ile host'a yansıtılır — yani `docker compose down` sonrası veriler kaybolm
 
 ```
 data/
-├── jarvis.db        # SQLite: görevler, antrenmanlar, PDF işleri (WAL modu)
+├── athena.db        # SQLite: görevler, antrenmanlar, PDF işleri (WAL modu)
 ├── chroma/          # ChromaDB kalıcı vektör deposu
 ├── uploads/         # /upload ile yüklenen ham PDF'ler
 ├── usage.csv        # Kalıcı API kullanım/maliyet geçmişi
@@ -302,7 +302,7 @@ ve TUI parçaları çıkarıldı). Boru hattı:
 4. **Bilgi tabanı** — notlar ChromaDB'ye parçalanarak eklenir (sohbette geri getirilir).
 5. **Sınav + Flashcard** — aynı notlardan sınav PDF'i ve Anki kartları (CSV/APKG) üretilir.
 
-Her aşama `jarvis.pdf_engine` log isim alanından **canlı log akışına** yazılır ve her
+Her aşama `athena.pdf_engine` log isim alanından **canlı log akışına** yazılır ve her
 çağrının token/maliyeti **PDF** sayacına işlenir. Üretilen tüm çıktılar PDF Otomasyonu
 sayfasındaki "Geçmiş PDF'ler" listesinden indirilebilir.
 
@@ -320,7 +320,7 @@ sayfasındaki "Geçmiş PDF'ler" listesinden indirilebilir.
 ## Proje Yapısı
 
 ```
-Jarvis/
+Athena/
 ├── app.py                      # FastAPI uygulaması (lifespan, CORS, uç noktalar)
 ├── config.py                   # Tek değişmez Settings nesnesi
 ├── requirements.txt
@@ -331,7 +331,7 @@ Jarvis/
 ├── core/
 │   ├── schemas.py              # Task(category/subtype/parent/progress/notes/materials),
 │   │                           #   Note, Material, LoadAdjustment, PhysicalLoad, PdfJob
-│   ├── state.py                # JarvisState (route/command/attachments)
+│   ├── state.py                # AthenaState (route/command/attachments)
 │   ├── graph.py                # LangGraph: router(+slash) / chat / pdf / task / workout
 │   ├── commands.py             # Slash komut kayıt defteri + ayrıştırıcı
 │   ├── note_analyzer.py        # Notlardan metrik çıkarımı (yüksek kapasiteli model)

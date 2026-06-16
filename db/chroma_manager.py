@@ -1,4 +1,4 @@
-"""Local ChromaDB vector store for Jarvis-Academic academic documents.
+"""Local ChromaDB vector store for Athena-Academic academic documents.
 
 :class:`ChromaManager` wraps a persistent ChromaDB collection that embeds text
 locally on the CPU using ChromaDB's default embedding function

@@ -3,7 +3,7 @@
 A single :class:`LogBus` keeps a bounded ring buffer of recent records and
 fan-outs every new record to any number of async subscribers (each backed by its
 own :class:`asyncio.Queue`). A :class:`logging.Handler` (``LogBusHandler``)
-attached to the ``"jarvis"`` logger feeds the bus, so anything the backend or the
+attached to the ``"athena"`` logger feeds the bus, so anything the backend or the
 PDF engine logs becomes available at ``GET /logs/stream`` in real time.
 
 The handler is sync (logging calls are sync) but the bus is consumed from async
@@ -77,7 +77,7 @@ class LogBusHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
-            # "jarvis.pdf_engine.ai" -> stage "pdf_engine.ai"
+            # "athena.pdf_engine.ai" -> stage "pdf_engine.ai"
             name = record.name
             stage = name.split(".", 1)[1] if "." in name else name
             self._bus.publish(

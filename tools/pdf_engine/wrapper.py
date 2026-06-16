@@ -4,7 +4,7 @@
 extract text (or fall back to page images), transcribe to LaTeX lecture notes,
 compile them, ingest the notes into ChromaDB so the agent can retrieve them, and
 (full pipeline) generate an exam PDF and Anki flashcards. Progress and failures
-are logged through the ``jarvis.pdf_engine`` namespace so they surface in the
+are logged through the ``athena.pdf_engine`` namespace so they surface in the
 live log stream, and a :class:`~core.schemas.PdfJob` row is kept up to date for
 the dashboard's "past PDFs" panel.
 
@@ -32,7 +32,7 @@ from tools.pdf_engine.automation import (
     generate_flashcards_from_notes,
 )
 
-logger = logging.getLogger("jarvis.pdf_engine")
+logger = logging.getLogger("athena.pdf_engine")
 
 
 class PdfJobResult(BaseModel):

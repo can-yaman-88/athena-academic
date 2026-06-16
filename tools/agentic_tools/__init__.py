@@ -1,4 +1,4 @@
-"""Agentic tools for Jarvis-Academic.
+"""Agentic tools for Athena-Academic.
 
 Exposes the bindable LangChain ``@tool`` functions as ``AGENTIC_TOOLS`` (ready to
 attach to the LangGraph agent), plus the Hardcore Mode chain and all Pydantic I/O

@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    container_name: jarvis_api
+    container_name: athena_api
     ports:
       # host 8888 -> container 8000 (uvicorn listens on 8000 inside the image).
       - "8888:8000"
@@ -14,7 +14,7 @@ services:
       # Frontend is served on host port 8088, so this must match localhost:8088.
       - CORS_ORIGINS=http://localhost:8088
     volumes:
-      # Persist SQLite (data/jarvis.db) and ChromaDB (data/chroma) across restarts.
+      # Persist SQLite (data/athena.db) and ChromaDB (data/chroma) across restarts.
       - ./data:/app/data
     restart: unless-stopped
 
@@ -25,7 +25,7 @@ services:
       args:
         # Baked into the static bundle at build time (Vite inlines VITE_* vars).
         VITE_API_URL: http://localhost:8888
-    container_name: jarvis_frontend
+    container_name: athena_frontend
     ports:
       # host 8088 -> container 80 (nginx listens on 80 inside the image).
       - "8088:80"

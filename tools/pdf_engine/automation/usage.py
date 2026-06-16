@@ -1,7 +1,7 @@
 """Token & cost usage tracking, split into independent categories.
 
 Adapted from the upstream ``core/state.py:UsageTracker``. Two changes for
-Jarvis-Academic:
+Athena-Academic:
 
 1. A **category** dimension (``"pdf"`` vs ``"agent"``) so the dashboard can show
    two separate meters — spend inside the PDF automation vs. spend on the chat

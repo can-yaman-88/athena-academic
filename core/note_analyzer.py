@@ -24,7 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from config import settings
 
-logger = logging.getLogger("jarvis.notes")
+logger = logging.getLogger("athena.notes")
 
 
 class CognitiveLoadAddition(BaseModel):

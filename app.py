@@ -1,4 +1,4 @@
-"""FastAPI application for Jarvis-Academic.
+"""FastAPI application for Athena-Academic.
 
 Exposes the LangGraph agent (streaming chat), a PDF upload endpoint that runs the
 in-process PDF->LaTeX engine in the background, task & workout CRUD, a PDF-job
@@ -33,7 +33,7 @@ from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 
 from config import settings
-from core.graph import build_jarvis_graph
+from core.graph import build_athena_graph
 from core.log_bus import LogBus, LogBusHandler
 from core.note_analyzer import analyze_notes
 from core.schemas import (
@@ -60,7 +60,7 @@ from tools.pdf_engine.automation import UsageTracker, build_engine_config
 from tools.pdf_engine.wrapper import _extract_markdown
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("jarvis.api")
+logger = logging.getLogger("athena.api")
 
 
 # --------------------------------------------------------------------------- #
@@ -70,13 +70,13 @@ logger = logging.getLogger("jarvis.api")
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings.uploads_dir.mkdir(parents=True, exist_ok=True)
 
-    # Live log bus: forward everything logged under "jarvis" to subscribers.
+    # Live log bus: forward everything logged under "athena" to subscribers.
     log_bus = LogBus()
     log_bus.bind_loop(asyncio.get_running_loop())
     handler = LogBusHandler(log_bus)
     handler.setLevel(logging.INFO)
-    logging.getLogger("jarvis").addHandler(handler)
-    logging.getLogger("jarvis").setLevel(logging.INFO)
+    logging.getLogger("athena").addHandler(handler)
+    logging.getLogger("athena").setLevel(logging.INFO)
     app.state.log_bus = log_bus
 
     # Two-category cost meter (pdf vs agent), persisted to CSV.
@@ -99,7 +99,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.graph = None
     if os.environ.get(settings.openrouter_api_key_env):
         try:
-            app.state.graph = build_jarvis_graph(
+            app.state.graph = build_athena_graph(
                 chroma_manager=chroma,
                 sqlite_manager=sqlite,
                 usage_callback=AgentUsageCallback(usage),
@@ -119,7 +119,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await sqlite.close()
 
 
-app = FastAPI(title="Jarvis-Academic", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="Athena-Academic", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

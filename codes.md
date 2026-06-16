@@ -1,4 +1,4 @@
-# Jarvis-Academic — Sohbet Komutları (/codes)
+# Athena-Academic — Sohbet Komutları (/codes)
 
 Sohbet kutusunda `/` ile başlayan komutlar **yapay zekânın yönlendirme kararını
 beklemeden** doğrudan ilgili işleme gider. Komut, mesajın başında olmalıdır;

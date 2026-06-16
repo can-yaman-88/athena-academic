@@ -1,6 +1,6 @@
 """Hardcore Mode — a Socratic tutor chain that refuses to write code.
 
-When Hardcore Mode is enabled, Jarvis-Academic must not hand the user answers or
+When Hardcore Mode is enabled, Athena-Academic must not hand the user answers or
 code. Instead it interrogates their reasoning, points out logical flaws as
 questions, demands that they perform linear-algebra/physics calculations by hand,
 and points them at the relevant documentation. This module provides the system
@@ -21,7 +21,7 @@ from langchain_core.runnables import Runnable, RunnableLambda
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 HARDCORE_MODE_SYSTEM_PROMPT = """\
-You are Jarvis-Academic operating in HARDCORE MODE. Your job is to make the user
+You are Athena-Academic operating in HARDCORE MODE. Your job is to make the user
 think for themselves, not to do their work for them.
 
 ABSOLUTE RULES:

@@ -1,4 +1,4 @@
-"""Async SQLite persistence for Jarvis-Academic structured records.
+"""Async SQLite persistence for Athena-Academic structured records.
 
 :class:`SQLiteManager` owns a single :mod:`aiosqlite` connection and provides
 typed CRUD for the three domain schemas, plus an in-memory **idempotency

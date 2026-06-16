@@ -16,7 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-logger = logging.getLogger("jarvis.workout_import")
+logger = logging.getLogger("athena.workout_import")
 
 _DEFAULT_RPE = 5
 _DEFAULT_DURATION = 30

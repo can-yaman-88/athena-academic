@@ -1,4 +1,4 @@
-"""Central configuration for Jarvis-Academic.
+"""Central configuration for Athena-Academic.
 
 A single immutable :class:`Settings` instance (``settings``) holds every tunable
 path and parameter so that no manager hardcodes filesystem locations or magic
@@ -27,7 +27,7 @@ class Settings(BaseModel):
     data_dir: Path = Field(default=_BASE_DIR / "data")
 
     # --- SQLite ------------------------------------------------------------
-    sqlite_path: Path = Field(default=_BASE_DIR / "data" / "jarvis.db")
+    sqlite_path: Path = Field(default=_BASE_DIR / "data" / "athena.db")
     db_busy_timeout_ms: int = Field(default=5000, gt=0)
     db_max_retries: int = Field(default=5, ge=0)
     db_retry_base_delay: float = Field(default=0.1, gt=0)
@@ -112,7 +112,7 @@ class Settings(BaseModel):
     pdf_retry_min_wait: int = Field(default=4, ge=0)
     pdf_retry_max_wait: int = Field(default=60, ge=1)
     pdf_referer: str = Field(default="https://localhost")
-    pdf_title: str = Field(default="Jarvis-Academic")
+    pdf_title: str = Field(default="Athena-Academic")
 
     # Whether to also generate exam + Anki flashcards from the notes (full pipeline).
     pdf_generate_exam: bool = Field(default=True)

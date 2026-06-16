@@ -1,4 +1,4 @@
-# Jarvis-Academic — Phase 1 data layer dependencies
+# Athena-Academic — Phase 1 data layer dependencies
 pydantic>=2.0
 aiosqlite>=0.19
 chromadb>=0.5

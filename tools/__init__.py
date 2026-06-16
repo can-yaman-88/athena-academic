@@ -1,1 +1,1 @@
-"""Top-level namespace for Jarvis-Academic tool packages."""
+"""Top-level namespace for Athena-Academic tool packages."""

@@ -1,6 +1,6 @@
-"""Graph state definition for the Jarvis-Academic agent.
+"""Graph state definition for the Athena-Academic agent.
 
-:class:`JarvisState` is the single mutable object threaded through every node of
+:class:`AthenaState` is the single mutable object threaded through every node of
 the LangGraph workflow. State transitions are **immutable by construction**: each
 node returns a *partial* mapping of the keys it wants to change, and LangGraph
 merges those into a new state. The ``messages`` channel uses the ``add_messages``
@@ -32,8 +32,8 @@ RouteTarget = Literal[
 CognitiveLoadStatus = Literal["low", "normal", "high", "overloaded"]
 
 
-class JarvisState(TypedDict):
-    """State threaded through the Jarvis-Academic graph.
+class AthenaState(TypedDict):
+    """State threaded through the Athena-Academic graph.
 
     Only ``messages`` is required to invoke the graph; every other key is
     populated by nodes as the run progresses, so they are ``NotRequired``.
@@ -67,6 +67,6 @@ class JarvisState(TypedDict):
 
 __all__ = [
     "CognitiveLoadStatus",
-    "JarvisState",
+    "AthenaState",
     "RouteTarget",
 ]

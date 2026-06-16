@@ -1,4 +1,4 @@
-"""PDF->LaTeX engine integration for Jarvis-Academic.
+"""PDF->LaTeX engine integration for Athena-Academic.
 
 Exposes the async wrapper that runs the vendored in-process OCR/MD->LaTeX->PDF
 engine (notes + exam + Anki flashcards), ingests the notes into ChromaDB, and

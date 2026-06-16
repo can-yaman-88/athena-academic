@@ -1,4 +1,4 @@
-"""Core domain layer for Jarvis-Academic.
+"""Core domain layer for Athena-Academic.
 
 Exposes the strict Pydantic schemas used throughout the system.
 """

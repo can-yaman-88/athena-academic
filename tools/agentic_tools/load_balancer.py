@@ -1,6 +1,6 @@
 """Cognitive load balancer — gate heavy mental work after hard training.
 
-Jarvis-Academic tracks physical training load and uses it to protect the user's
+Athena-Academic tracks physical training load and uses it to protect the user's
 cognitive budget. A brutal endurance session (heavy triathlon, long orienteering)
 leaves little capacity for demanding intellectual work the same day, so this tool
 computes a training-load score and, above a threshold, issues a directive that

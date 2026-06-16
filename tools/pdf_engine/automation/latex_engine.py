@@ -1,7 +1,7 @@
 """LaTeX cleaning, deterministic repair, engine selection and async compilation.
 
 Vendored verbatim (logic-wise) from the upstream ``services/latex_engine.py``;
-only the logger and config type are swapped for Jarvis-Academic's. Compilation
+only the logger and config type are swapped for Athena-Academic's. Compilation
 flow per document:
   1. clean_latex  -> strip markdown fences, crop to documentclass..end{document}.
   2. deterministic fix_latex (free, fast) -> close known pitfalls.
@@ -23,7 +23,7 @@ from typing import Awaitable, Callable, Optional
 
 from .engine_config import EngineConfig
 
-log = logging.getLogger("jarvis.pdf_engine.latex")
+log = logging.getLogger("athena.pdf_engine.latex")
 
 # (code, error_log) -> corrected code  (LLM self-correction callback)
 Corrector = Callable[[str, str], Awaitable[str]]

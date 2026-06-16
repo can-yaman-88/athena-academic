@@ -1,4 +1,4 @@
-"""Strict Pydantic v2 domain schemas for Jarvis-Academic.
+"""Strict Pydantic v2 domain schemas for Athena-Academic.
 
 These models are the single source of truth for the shape and validity of every
 record that flows through the system. All validation (bounds, required fields,

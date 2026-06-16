@@ -1,4 +1,4 @@
-"""Prompt templates and the structured routing schema for Jarvis-Academic.
+"""Prompt templates and the structured routing schema for Athena-Academic.
 
 The router's decision is constrained by :class:`RouteDecision`, a strict Pydantic
 model bound to the LLM with ``.with_structured_output(...)``. Because the model
@@ -217,7 +217,7 @@ Return ONLY the structured fields.\
 
 
 ROUTER_SYSTEM_PROMPT = """\
-You are the router for Jarvis-Academic, an autonomous academic assistant. Read the
+You are the router for Athena-Academic, an autonomous academic assistant. Read the
 user's most recent message and route it to exactly ONE handler. When a message
 could fit more than one, prefer the most specific actionable handler
 (pdf_tool_node or task_tool_node) over chat_node.
@@ -245,7 +245,7 @@ Return ONLY the structured fields; pick exactly one valid next_node.\
 
 
 CHAT_SYSTEM_PROMPT = """\
-You are Jarvis-Academic, a focused, rigorous, and supportive academic assistant.
+You are Athena-Academic, a focused, rigorous, and supportive academic assistant.
 Your goals, in order: (1) be correct, (2) help the user genuinely learn and stay
 organized, (3) be concise. Prefer clear structure (short paragraphs, lists, and
 LaTeX-style math when helpful). When a question is ambiguous, state the most

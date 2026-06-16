@@ -13,12 +13,9 @@ export default function Layout() {
       <header className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950/70 px-6 py-3 backdrop-blur-md">
         <div className="flex items-center gap-2.5">
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px] shadow-emerald-400/70" />
-          <h1 className="text-base font-semibold tracking-tight">
-            Jarvis<span className="text-emerald-400">-Academic</span>
+          <h1 className="text-base font-semibold tracking-tight text-emerald-400">
+            Athena
           </h1>
-          <span className="ml-1 hidden text-xs text-zinc-600 sm:inline">
-            otonom akademik asistan
-          </span>
         </div>
         <nav className="flex items-center gap-1">
           {links.map((l) => (

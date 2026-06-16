@@ -18,7 +18,7 @@ from langchain_core.outputs import LLMResult
 
 from config import settings
 
-logger = logging.getLogger("jarvis.usage")
+logger = logging.getLogger("athena.usage")
 
 _CATEGORY = "agent"
 

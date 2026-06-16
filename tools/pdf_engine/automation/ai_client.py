@@ -1,8 +1,8 @@
 """Async OpenRouter client for the PDF->LaTeX engine.
 
 Vendored from the upstream ``services/ai_client.py`` with two adaptations for
-Jarvis-Academic:
-- logging goes through the ``jarvis.pdf_engine`` namespace (so lines reach the
+Athena-Academic:
+- logging goes through the ``athena.pdf_engine`` namespace (so lines reach the
   live log stream), not the upstream ``rich`` logger;
 - token/cost usage is recorded into our :class:`~tools.pdf_engine.automation.usage.UsageTracker`
   under the ``"pdf"`` category, instead of the upstream ``AppState``.
@@ -32,7 +32,7 @@ from tenacity import (
 from .engine_config import EngineConfig
 from .usage import UsageTracker
 
-log = logging.getLogger("jarvis.pdf_engine.ai")
+log = logging.getLogger("athena.pdf_engine.ai")
 
 _CATEGORY = "pdf"
 

@@ -19,7 +19,7 @@ from pathlib import Path
 from .ai_client import AIClient
 from .engine_config import EngineConfig
 
-log = logging.getLogger("jarvis.pdf_engine.flashcard")
+log = logging.getLogger("athena.pdf_engine.flashcard")
 
 try:
     import genanki  # type: ignore
@@ -84,7 +84,7 @@ def _write_apkg(cards: list[Flashcard], path: Path, deck_name: str) -> bool:
     try:
         model = genanki.Model(
             1607392319,
-            "Jarvis Basic",
+            "Athena Basic",
             fields=[{"name": "Front"}, {"name": "Back"}],
             templates=[
                 {
