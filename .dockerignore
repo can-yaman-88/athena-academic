@@ -1,0 +1,11 @@
+# Keep the backend image small and builds fast.
+.venv/
+data/
+**/__pycache__/
+*.pyc
+frontend/
+.git/
+.gitignore
+*.md
+.claude/
+.pytest_cache/

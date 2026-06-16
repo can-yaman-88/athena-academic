@@ -1,0 +1,23 @@
+# Jarvis-Academic — Phase 1 data layer dependencies
+pydantic>=2.0
+aiosqlite>=0.19
+chromadb>=0.5
+
+# Phase 2 — LangGraph agent control plane (LLMs via OpenRouter)
+langgraph>=0.2
+langchain-core>=0.3
+langchain-openai>=0.2
+
+# Phase 5 — API layer
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+
+# PDF->LaTeX engine (vendored in tools/pdf_engine/automation)
+httpx>=0.27
+tenacity>=8.2
+pymupdf4llm>=0.0.17
+pdf2image>=1.17
+Pillow>=10.0
+genanki>=0.13
+fitdecode>=0.10

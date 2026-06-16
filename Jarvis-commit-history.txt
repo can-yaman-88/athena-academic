@@ -1,0 +1,30 @@
+Yapılması gereken bazı değişiklikler var:
+
+<<< Görünüm >>>
+
+1. İlk olarak her şey ana sayfada olmamalı, ana sayfa ikiye bölünmüş halde olmalı ve sayfanın solunda görevler, son tarihler gibi şeylerin olduğu günüm görünümü, sağında ise chat box olmalı.
+2.  Bir diğer sayfada da pdf otomasyonu olmalı, ekran yine 3'e bölünmüş olmalı.
+    -En solda geçmiş pdfler olmalı.
+    -Orta alan tekrar ikiye bölünmüş olmalı, üstte api ücreti kullanımı verileri ve analizleri (ort. gibi) olmalı, altta ise pdf sürükleme ve yükleme yeri olmalı.
+    -Sağ tarafta ise bu otomasyonun sistem logları anlık olarak akmalı, bir sorun olursa nerede olduğunu veya durumun ne olduğunu bu loglardan anlık olarak okumam gerekli.
+
+    3. Son sayfada da görevlerin ayrıntılı hali olmalı, görev eklenip çıkarılabilmeli, görevlerin ayrıntıları değiştirilebilmeli, yeni görev eklenebilmeli gibi birkaç özellik olmalı.
+    -Bu sayfadaki görevlere antrenmanlar da dahil, aynı şekilde antrenmanlar da görülebilmeli, değiştirilebilmeli.
+
+4. Görünümü daha modern ve kullanışlı hale getir, bu minimalist halini ve renk düzenini beğendim, bunu koru ama butonlar olsun, sayfalar olsun biraz daha albenili hale getir.
+5. CGPA kısmını tamamen kaldır. Onu kullanmıyorum.
+
+
+
+<<< Sistem Değişiklikleri >>>
+
+1. Pdf işleme otomasyonu için sana vereceğim github reposundaki otomasyon sistemini kullan.Bu sistemin ana yapısını kopyala, senkronizasyon gibi kısımları devre dışı bırak, motoru ve yapıyı al ve bizim sistemimize uygula.
+Reponun linki: https://github.com/can-yaman-88/PDF-OCR-MD-LaTeX-PDF-Lecture-Automation.git
+2. API çağrılarındaki promptları güncelle, derinleştir ve geliştir. Tüm ayrıntıları yazmamak için zaten bu otomasyonu kuruyorum, benden ekleyeceğim görevin tüm ayrıntıları istenmemeli. Bunun için de bazı defaultlar belirle ve yapay zekaya da eğer ben bir şey yazarsam bu defaultları değiştirmesini, aksi takdirde o defaultları döndürmesini söyle.
+Yani promptların bu gibi benim eksik bıraktığım durumlarda hata vermesini engelleyecek şekilde güncellenmeli.
+3. Yerel herhangi bir model ile işim olsun istemiyorum, yerel model ayarları gibi şeyleri devre dışı bırak.
+
+
+<<< Ek Notlar >>>
+
+Genel olarak beklediğim gibi bir şey çıkarmışsın. Tebrikler. Bu değişiklikleri uyguladıktan sonra daha dern bir test sürecine gireceğiz. Şimdi senden bu istediklerimi hatasız şekilde yapmanı istiyorum. Ve sana eklediğimiz ui max skilini görünüm başlığı altındaki değişiklikleri uygularken kullanmanı istiyorum.

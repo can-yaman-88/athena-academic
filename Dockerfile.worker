@@ -1,0 +1,41 @@
+# syntax=docker/dockerfile:1
+# Backend image for Jarvis-Academic (api_service). Includes the minimal LaTeX +
+# PDF toolchain the PDF->LaTeX engine needs, since /upload runs the engine in
+# FastAPI BackgroundTasks inside this container.
+FROM python:3.12-slim AS base
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Full-pipeline LaTeX + PDF tooling. The vendored engine compiles real lecture
+# notes + exams (theorem/tcolorbox/pgfplots/tikz, fontspec for lua/xelatex), so a
+# richer TeX set than the minimal base is required — but still NOT texlive-full.
+# NOTE: "texlive-scheme-basic" is an upstream TeX Live *scheme*, not a Debian apt
+# package. The packages below are the apt equivalent for this engine's output.
+# Tradeoff: this is a sizeable layer and the first build is slow.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        texlive-latex-base \
+        texlive-latex-extra \
+        texlive-fonts-recommended \
+        texlive-luatex \
+        texlive-xetex \
+        poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python deps first for better layer caching.
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the application source.
+COPY . .
+
+# Persisted data (SQLite + ChromaDB) lives here; mounted as a volume in compose.
+RUN mkdir -p /app/data
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

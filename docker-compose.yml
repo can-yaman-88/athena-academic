@@ -1,0 +1,34 @@
+services:
+  api_service:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: jarvis_api
+    ports:
+      # host 8888 -> container 8000 (uvicorn listens on 8000 inside the image).
+      - "8888:8000"
+    environment:
+      # Pass through the OpenRouter key from the host/.env (empty disables /chat).
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      # Allow the frontend origin to call the API (consumed by config.py).
+      # Frontend is served on host port 8088, so this must match localhost:8088.
+      - CORS_ORIGINS=http://localhost:8088
+    volumes:
+      # Persist SQLite (data/jarvis.db) and ChromaDB (data/chroma) across restarts.
+      - ./data:/app/data
+    restart: unless-stopped
+
+  frontend_service:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the static bundle at build time (Vite inlines VITE_* vars).
+        VITE_API_URL: http://localhost:8888
+    container_name: jarvis_frontend
+    ports:
+      # host 8088 -> container 80 (nginx listens on 80 inside the image).
+      - "8088:80"
+    depends_on:
+      - api_service
+    restart: unless-stopped
