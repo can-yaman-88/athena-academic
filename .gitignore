@@ -13,7 +13,7 @@ __pycache__/
 .ruff_cache/
 
 # Runtime data (SQLite DB, ChromaDB, uploads, usage logs, PDF/task artifacts)
-data/
+/data/
 
 # Node / frontend build
 node_modules/
