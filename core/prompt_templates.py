@@ -69,6 +69,14 @@ class TaskExtraction(BaseModel):
             "change (e.g. 'jog', 'thermo project'). Null if unclear."
         ),
     )
+    parent_hint: Optional[str] = Field(
+        default=None,
+        description=(
+            "For 'create' only: if the user explicitly wants this task to be a "
+            "subtask of another, a short phrase identifying the parent task. "
+            "Null otherwise."
+        ),
+    )
     title: str = Field(
         description="A concise, human-readable title for the task."
     )
@@ -107,6 +115,13 @@ class TaskExtraction(BaseModel):
     subtype: Optional[Literal["project", "assignment", "study_session"]] = Field(
         default=None,
         description="Academic sub-type when category is 'academic'; else null.",
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description=(
+            "List of tags associated with the task (e.g. ['İş', 'Okuma']). "
+            "Extract these if the user mentions them using a '#' symbol or explicitly."
+        )
     )
 
 
@@ -163,10 +178,17 @@ CATEGORY & SUBTYPE:
   study_session). Set category to "daily" for everyday/general to-dos (leave subtype
   null). If genuinely unsure, leave category null.
 
-MULTIPLE TASKS:
+TAGS (#):
+- Look for hashtag-style words (e.g. #İş, #Okuma, #Genel) or explicit mentions 
+  of tags. Add the word (without the #) to the "tags" array. Common tags are: 
+  İş, Günlük Yazma, Okuma, Kişisel gelişim, Genel.
+
+MULTIPLE TASKS & SUBTASKS:
 A single message may describe several tasks (e.g. "add A and also B"). Return one
-entry in "tasks" for EACH distinct task, each independently completed with the
-rules above.
+entry in "tasks" for EACH distinct task. If the user indicates a relationship
+(e.g., "Add a subtask X to my project Y"), you MUST use "parent_hint". Set
+"parent_hint" to the specific name of the parent task. Never omit "parent_hint"
+when a subtask relationship is requested.
 
 Respond ONLY with the structured fields required by the schema.\
 """

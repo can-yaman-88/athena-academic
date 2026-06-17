@@ -31,6 +31,7 @@ export interface Task {
   progress: number;
   materials: Material[];
   notes: Note[];
+  tags: string[];
 }
 
 export interface CognitiveLoad {
@@ -96,6 +97,17 @@ export interface UsageSnapshot {
   pdf: UsageCategory;
   agent: UsageCategory;
   total: { total_cost_usd: number; total_tokens: number };
+}
+
+export interface UsageLog {
+  timestamp: string;
+  category: string;
+  model: string;
+  label: string;
+  prompt_tokens: string;
+  completion_tokens: string;
+  total_tokens: string;
+  cost_usd: string;
 }
 
 export interface DashboardData {
@@ -251,6 +263,7 @@ export const artifactUrl = (jobId: string, fullPath: string) => {
 };
 
 export const getUsage = () => jget<UsageSnapshot>("/usage");
+export const getUsageLogs = (limit = 50) => jget<{ logs: UsageLog[] }>(`/usage/logs?limit=${limit}`).then(d => d.logs);
 
 // --------------------------------------------------------------------------- //
 // Upload

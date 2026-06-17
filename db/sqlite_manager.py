@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     parent_id       TEXT,
     progress        INTEGER NOT NULL DEFAULT 0,
     materials       TEXT NOT NULL DEFAULT '[]',
-    notes           TEXT NOT NULL DEFAULT '[]'
+    notes           TEXT NOT NULL DEFAULT '[]',
+    tags            TEXT NOT NULL DEFAULT '[]'
 );
 """
 
@@ -77,6 +78,7 @@ _TASK_COLUMN_MIGRATIONS = [
     ("progress", "progress INTEGER NOT NULL DEFAULT 0"),
     ("materials", "materials TEXT NOT NULL DEFAULT '[]'"),
     ("notes", "notes TEXT NOT NULL DEFAULT '[]'"),
+    ("tags", "tags TEXT NOT NULL DEFAULT '[]'"),
 ]
 
 _CREATE_TASKS_STATUS_INDEX = (
@@ -379,6 +381,7 @@ class SQLiteManager:
             progress=row["progress"] if "progress" in keys and row["progress"] is not None else 0,
             materials=[Material(**m) for m in _json("materials")],
             notes=[Note(**n) for n in _json("notes")],
+            tags=_json("tags"),
         )
 
     @staticmethod
@@ -417,8 +420,8 @@ class SQLiteManager:
             """
             INSERT OR REPLACE INTO tasks
                 (id, title, deadline, discipline, status, estimated_hours,
-                 category, subtype, parent_id, progress, materials, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 category, subtype, parent_id, progress, materials, notes, tags)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 task.id,
@@ -433,6 +436,7 @@ class SQLiteManager:
                 task.progress,
                 json.dumps([m.model_dump(mode="json") for m in task.materials]),
                 json.dumps([n.model_dump(mode="json") for n in task.notes]),
+                json.dumps(task.tags),
             ),
         )
         self._sync_queue(task)

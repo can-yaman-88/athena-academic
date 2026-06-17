@@ -185,8 +185,6 @@ def _resolve_target_task(
     when None, prefer tasks due *today*, else the nearest future task. ``target_hint``
     (a phrase) breaks ties by case-insensitive title match.
     """
-    open_tasks = [t for t in tasks if t.parent_id is None]
-
     def _match(cands: list[Task]) -> Optional[Task]:
         if not cands:
             return None
@@ -197,15 +195,18 @@ def _resolve_target_task(
                 return sorted(hits, key=lambda t: t.deadline)[0]
         return sorted(cands, key=lambda t: t.deadline)[0]
 
+    # Search among all tasks (including subtasks) if explicitly hinted, otherwise just top-level
+    cands_pool = tasks if target_hint else [t for t in tasks if t.parent_id is None]
+
     if target_date is not None:
-        return _match([t for t in open_tasks if t.deadline.date() == target_date])
+        return _match([t for t in cands_pool if t.deadline.date() == target_date])
 
     today = now.date()
-    todays = [t for t in open_tasks if t.deadline.date() == today]
+    todays = [t for t in cands_pool if t.deadline.date() == today]
     hit = _match(todays)
     if hit:
         return hit
-    future = [t for t in open_tasks if t.deadline >= now]
+    future = [t for t in cands_pool if t.deadline >= now]
     return _match(future)
 
 
@@ -244,7 +245,7 @@ def _resolve_task_by_name(
     """Find a task by name (exact substring else fuzzy) optionally on a date."""
     import difflib
 
-    cands = [t for t in tasks if t.parent_id is None]
+    cands = tasks  # include subtasks in direct name lookups
     if not include_completed:
         cands = [t for t in cands if t.status != TaskStatus.COMPLETED]
     if target_date is not None:
@@ -322,7 +323,18 @@ def chat_node(
     system = CHAT_SYSTEM_PROMPT.format(
         context=context or "(no relevant context found)"
     )
-    response = chat_llm.invoke([SystemMessage(content=system), *state["messages"]])
+    
+    llm_to_use = chat_llm
+    override = state.get("model_override")
+    if override:
+        try:
+            from core.graph import _make_llm
+            # Attempt to use the overridden model
+            llm_to_use = _make_llm(override, settings.chat_max_tokens)
+        except Exception as e:
+            logger.warning("Could not override model with %s: %s", override, e)
+
+    response = llm_to_use.invoke([SystemMessage(content=system), *state["messages"]])
     return {
         "messages": [response],
         "retrieved_context": context or None,
@@ -529,6 +541,10 @@ async def task_tool_node(
             sub = forced_subtype or op.subtype
             if sub and target.category == TaskCategory.ACADEMIC:
                 target.subtype = AcademicSubtype(sub)
+            if op.tags:
+                # Merge new tags or just replace? The prompt says "Extract these". We should append or replace.
+                # Since LLM might not know old tags, let's just append unique tags.
+                target.tags = list(set(target.tags + op.tags))
             await sqlite_manager.update_task(target)
             updated.append(target)
             continue
@@ -540,29 +556,36 @@ async def task_tool_node(
         if category == TaskCategory.ACADEMIC:
             sub_value = forced_subtype or op.subtype
             subtype = AcademicSubtype(sub_value) if sub_value else None
+        
+        parent_id = None
+        if op.parent_hint:
+            parent_target = _resolve_target_task(tasks, op.parent_hint, None, now)
+            if parent_target:
+                parent_id = parent_target.id
+                # Inherit deadline from parent if it's earlier
+                op_deadline = _resolve_deadline(op.deadline, now)
+                deadline = min(op_deadline, parent_target.deadline)
+            else:
+                deadline = _resolve_deadline(op.deadline, now)
+        else:
+            deadline = _resolve_deadline(op.deadline, now)
+
         task = Task(
             title=op.title or (working_text or "Untitled task"),
-            deadline=_resolve_deadline(op.deadline, now),
+            deadline=deadline,
             discipline=op.discipline or settings.default_discipline,
             estimated_hours=op.estimated_hours or settings.default_estimated_hours,
             category=category,
             subtype=subtype,
             materials=materials if category == TaskCategory.ACADEMIC else [],
+            parent_id=parent_id,
+            tags=op.tags,
         )
         await sqlite_manager.create_task(task)
         created.append(task)
         logger.info("created task id=%s title=%s cat=%s", task.id, task.title, category.value)
 
-        # auto-generate subtasks for academic tasks (best effort)
-        if category == TaskCategory.ACADEMIC and subtask_llm is not None:
-            try:
-                subs = await _generate_subtasks(task, attach_text, subtask_llm, now)
-                for s in subs:
-                    await sqlite_manager.create_task(s)
-                if subs:
-                    logger.info("generated %d subtasks for %s", len(subs), task.title)
-            except Exception:  # noqa: BLE001 - subtask gen must not fail the create
-                logger.exception("subtask generation failed for %s", task.title)
+        # Alt görevleri otomatik üretme özelliği plan gereği kaldırıldı. İstendiğinde UI üzerinden üretilecek.
 
     msgs: list[str] = []
     if created:
@@ -627,13 +650,21 @@ async def workout_tool_node(
         return {"messages": [AIMessage(content="Eklenecek bir antrenman bulamadım.")],
                 "active_tool": "log_workout"}
 
+    from core.schemas import WorkoutStatus
+    
     saved = 0
+    default_status = hints.get("status", "completed")
     for it in items:
         try:
             d = date_type.fromisoformat(it.date) if it.date else now.date()
         except ValueError:
             d = now.date()
-        load = PhysicalLoad(date=d, duration_minutes=it.duration_minutes, rpe_score=it.rpe_score)
+        load = PhysicalLoad(
+            date=d, 
+            duration_minutes=it.duration_minutes, 
+            rpe_score=it.rpe_score, 
+            status=WorkoutStatus(default_status)
+        )
         await sqlite_manager.create_physical_load(load)
         saved += 1
 

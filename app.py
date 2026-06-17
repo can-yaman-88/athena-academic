@@ -136,6 +136,9 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
     attachment_ids: list[str] = Field(default_factory=list)
+    model: Optional[str] = None
+    system_prompt: Optional[str] = None
+    history: list[dict[str, str]] = Field(default_factory=list)
 
 
 class TaskCreateRequest(BaseModel):
@@ -265,9 +268,21 @@ async def chat(request: Request, body: ChatRequest) -> StreamingResponse:
             )
 
     async def event_stream() -> AsyncIterator[str]:
+        from langchain_core.messages import AIMessage, SystemMessage
+        history_msgs = []
+        if body.system_prompt:
+            history_msgs.append(SystemMessage(content=body.system_prompt))
+            
+        for h in body.history[-10:]:  # Keep last 10 messages for context
+            if h.get("role") == "user":
+                history_msgs.append(HumanMessage(content=h.get("text", "")))
+            elif h.get("role") == "agent":
+                history_msgs.append(AIMessage(content=h.get("text", "")))
+        
         state = {
-            "messages": [HumanMessage(content=body.message)],
+            "messages": history_msgs + [HumanMessage(content=body.message)],
             "attachments": attachments,
+            "model_override": body.model,
         }
         try:
             async for update in graph.astream(state, stream_mode="updates"):
@@ -807,6 +822,22 @@ async def usage(request: Request) -> dict[str, Any]:
     """Two-category API cost/usage snapshot: PDF automation vs. agent."""
     tracker: UsageTracker = request.app.state.usage
     return tracker.snapshot()
+@app.get("/usage/logs")
+async def usage_logs(request: Request, limit: int = 50) -> dict[str, Any]:
+    """Return the raw usage rows (newest first)."""
+    from tools.pdf_engine.automation.usage import UsageTracker
+    tracker: UsageTracker = request.app.state.usage
+    path = tracker._csv_path
+    if not path or not path.exists():
+        return {"logs": []}
+    
+    import csv
+    try:
+        with path.open("r", encoding="utf-8", newline="") as fh:
+            rows = list(csv.DictReader(fh))
+        return {"logs": rows[-limit:][::-1]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/logs/stream")

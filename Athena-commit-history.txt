@@ -1,3 +1,68 @@
+20.22
+Harika, tüm özellikler müthiş çalışıyor. Müthişsin. Şimdi yeni özellikler ekleme zamanı.
+
+1. Yapay zeka arayüzlerindeki gibi bizim chatbox'ımızı da tam fonksiyonelli bir arayüz haline getirelim. Bana Open Web UI'dan getirdiğin 7 tane özelliği söyle ben de içlerinden onaylama yapayım.
+    - Yeni konuşma başlatma, diğer konuşmaları görme (geçmiş konuşmalar) ve sohbeti silme butonları ekle. Bu butonlar önereceğin özelliklerden farklı olsun.
+
+2. Diğer kullanım kısmının altında toggle şeklinde api isteklerinin ayrıntılarının (model, input toke, output token vb.) gösterildiği bir log ekranı oluştur. Görselde bir örnek var.
+
+
+
+
+20.06
+
+1. Yapay zeka alt görev ekle dendiğinde alt görev eklemek yerine alt görevleri yeni bir görev olarak ekliyor. Bunu düzelt.
+- Alt görevlere de aynı normal görevler gibi notlar eklenebilsin.
+- Burada notların analizi sonrasında görevlerdeki değişiklikleri, alt görev eklemeleri, tamamlamaları gibi şeyleri de düzeltmen gerekli.
+Genel olarak projedeki görevler ile yapay zeka arasında bir kopukluk var. Bunu düzeltmeni istiyorum.
+
+
+
+
+19.42
+
+1. Bu görev değişiklerini promptlara da uygula, promptları derinleştir ve genişlet, kullanım senaryoları için tam promptlar oluştur.
+
+2. Chatbox'da geçmişi aktif et, bu sayede önceki konuşmaları görebileyim ve bu konuşmalara devam edebileyim.
+Ayrıca başka bir sayfaya gidince chatbox temizleniyor. Bunu düzelt
+
+3. Materyaller sekmesini düzenle. Dosya+ butonu kalsın, Bağlantı+ butonunu da ekleyince yanındaki ad ve link girme penceresi açılacak şekilde ayarla. Ad ve link kutucukları sadece bağlantı+ butonuna basınca açılsın.
+Ayrıca ilerleme kayar butonunu tamamen kaldır.
+
+4. Görevler için filtreler getir. Benim belirlediklerim:
+    -Zaman: Bugün, Bu hafta, Bu ay içindeki görevler.
+    -Tamamlanma: Tamamlandı, Bekliyor.
+
+5. Görevler için etiketler getir. # işareti ile chatbox'dan etiketler belirleyebileyim. # işareti girildiğinde @ işaretine benzer bir şekilde mevcut etiketler görülsün ve yeni etiket ekle seçeneği çıksın.
+Default etiketler:
+    - İş
+    - Günlük Yazma
+    - Okuma
+    - Kişisel gelişim
+    - Genel
+
+
+
+
+16.06.2026 19.05
+
+1.Görevler
+    -Günüm sayfasından görevleri düzenleyebileceğim hale getir.
+    -Günlük görevler için de elle (chatbox'a alt görev ekle diyerek veya görevler sayfasından ekleyerek) alt görevler eklemeyi etkinleştir.
+    -Akademik görevlerdeki alt görev ekleme kısmını sadece istenirse yapılacak şekilde düzenle.
+    -Görevler sayfasında her görev için alt görev eklemek için bir buton ekle.
+2. @ fonksiyonu.
+    -@ işareti girildiğinde dosyalara, görevlere ve antrenmanlara referans yapabilmemi sağla. bu mantık tıpkı vs code uygulamasında yapay zeka ajanı ile konuşurken kullanılan @ fonksiyonu gibi çalışsın.
+    -Ayrıca bu işaret ile kullanılacak model değişebilsin.
+
+Bu iki değişiklik tamamlandıktan sonra normal bir akış şöyle olmalı:
+Chatbox'a "Bugün saat 19.00'a bir saatlik günlük yazma görevi ekle, alt görev olarak Çalışma sistemi, Antrenman sistemi, Düşünce sistemi ve bütçe görevlerini ekle. Not olarak da 'Bu alt görevler hakkında kararlar verilmeli ve somut bir sistem oluşturulmalı.' notunu ekle." yazacağım ve bugün saat 19'a planlı, 4 tane alt görev girilmiş, notu girilmiş ve anasayfadan düzenleyebildiğim bir görev eklenmiş olacak.
+3. Antrenmanlar
+    -Chatbox'dan eklenen antrenmanların hepsi direkt olarak tamamlanmış olarak sayılıyor. Bunun için /antrenman-planla adında yeni bir kod oluştur. Eğer bu kod yazmadan antrenman girilirse tamamlanmış sayılsın.
+
+
+
+
 Yapılması gereken bazı değişiklikler var:
 
 <<< Görünüm >>>

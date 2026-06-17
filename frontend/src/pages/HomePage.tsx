@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { getDashboard, type DashboardData } from "../api";
-import { Badge, Card, fmtDeadline } from "../ui";
+import { Badge, Card, Button } from "../ui";
 import ChatTerminal from "../components/ChatTerminal";
+import TaskCard from "../components/TaskCard";
 
 export default function HomePage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState("");
+  const [timeFilter, setTimeFilter] = useState<"Tümü" | "Bugün" | "Bu hafta" | "Bu ay">("Tümü");
+  const [statusFilter, setStatusFilter] = useState<"Tümü" | "Tamamlandı" | "Bekliyor">("Tümü");
 
   useEffect(() => {
     const refresh = async () => {
@@ -24,6 +27,31 @@ export default function HomePage() {
   const tasks = (data?.tasks ?? [])
     .slice()
     .sort((a, b) => a.deadline.localeCompare(b.deadline));
+    
+  const filteredTasks = tasks.filter(t => {
+    // Tamamlanma filter
+    if (statusFilter === "Tamamlandı" && t.status !== "completed") return false;
+    if (statusFilter === "Bekliyor" && t.status !== "pending") return false;
+    
+    // Zaman filter
+    if (timeFilter !== "Tümü") {
+      const deadline = new Date(t.deadline);
+      const now = new Date();
+      let limit = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      if (timeFilter === "Bugün") {
+        // limit is today's end
+      } else if (timeFilter === "Bu hafta") {
+        const daysUntilSunday = (7 - now.getDay()) % 7;
+        limit.setDate(limit.getDate() + daysUntilSunday);
+      } else if (timeFilter === "Bu ay") {
+        limit = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      }
+      if (deadline > limit) return false;
+    }
+    
+    return true;
+  });
+
   const load = data?.cognitive_load;
 
   return (
@@ -62,24 +90,50 @@ export default function HomePage() {
         <div className="text-[11px] uppercase tracking-wider text-zinc-500">
           Görevler & son tarihler
         </div>
-        {tasks.length === 0 && (
+        
+        {/* Filters */}
+        <div className="flex flex-col gap-2 rounded-lg bg-zinc-900/50 p-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-zinc-500 w-16">Zaman:</span>
+            {["Bugün", "Bu hafta", "Bu ay", "Tümü"].map(f => (
+              <button 
+                key={f} 
+                onClick={() => setTimeFilter(f as any)} 
+                className={`rounded px-2 py-1 ${timeFilter === f ? "bg-emerald-500/20 text-emerald-300" : "text-zinc-400 hover:bg-zinc-800"}`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-zinc-500 w-16">Durum:</span>
+            {["Tamamlandı", "Bekliyor", "Tümü"].map(f => (
+              <button 
+                key={f} 
+                onClick={() => setStatusFilter(f as any)} 
+                className={`rounded px-2 py-1 ${statusFilter === f ? "bg-emerald-500/20 text-emerald-300" : "text-zinc-400 hover:bg-zinc-800"}`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filteredTasks.length === 0 && (
           <p className="text-sm text-zinc-500">Henüz görev yok. Sohbetten ekleyebilirsin.</p>
         )}
         <ul className="flex flex-col gap-2">
-          {tasks.map((t) => (
-            <li
-              key={t.id}
-              className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2"
-            >
-              <div className="min-w-0">
-                <div className="truncate text-sm text-zinc-100">{t.title}</div>
-                <div className="mt-0.5 text-xs text-zinc-500">
-                  {t.discipline} · {t.estimated_hours}h · {fmtDeadline(t.deadline)}
-                </div>
-              </div>
-              <Badge tone={t.status === "completed" ? "emerald" : "amber"}>
-                {t.status === "completed" ? "tamam" : "bekliyor"}
-              </Badge>
+          {filteredTasks.filter((t) => t.parent_id === null).map((t) => (
+            <li key={t.id}>
+              <TaskCard
+                task={t}
+                subtasks={tasks.filter((s) => s.parent_id === t.id)}
+                onChanged={() => {
+                  import("../api").then(({ getDashboard }) => {
+                    getDashboard().then((d) => setData(d)).catch((e) => setError(e.message));
+                  });
+                }}
+              />
             </li>
           ))}
         </ul>

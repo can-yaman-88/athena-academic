@@ -138,6 +138,9 @@ class Task(_StrictModel):
     notes: list[Note] = Field(
         default_factory=list, description="Editable notes attached to the task."
     )
+    tags: list[str] = Field(
+        default_factory=list, description="Tags associated with the task."
+    )
 
 
 class StudySession(_StrictModel):

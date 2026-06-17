@@ -73,8 +73,13 @@ COMMANDS: dict[str, Command] = {
     ),
     "antrenman": Command(
         "antrenman", "workout_tool_node",
-        "Tek bir antrenman ekle (süre + RPE).",
-        {"mode": "single"},
+        "Tek bir tamamlanmış antrenman ekle (süre + RPE).",
+        {"mode": "single", "status": "completed"},
+    ),
+    "antrenman-planla": Command(
+        "antrenman-planla", "workout_tool_node",
+        "Tek bir planlı antrenman ekle (süre + RPE).",
+        {"mode": "single", "status": "planned"},
     ),
     "plan": Command(
         "plan", "workout_tool_node",
@@ -85,6 +90,11 @@ COMMANDS: dict[str, Command] = {
         "not", "task_tool_node",
         "Bir göreve not ekle. Biçim: /not <görev ipucu>: <not metni>",
         {"operation": "note"},
+    ),
+    "default": Command(
+        "default", "chat_node",
+        "Kalıcı bir model atar. Kullanım: /default @model_adi",
+        {"mode": "default"},
     ),
     "yardim": Command(
         "yardim", "chat_node",

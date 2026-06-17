@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getUsage, type UsageSnapshot } from "../api";
 import { Stat, usd } from "../ui";
+import UsageLogsTable from "./UsageLogsTable";
 
 function Meter({
   title,
@@ -73,6 +74,7 @@ export default function UsageMeters() {
       </div>
       <Meter title="PDF otomasyonu" cat={usage?.pdf} tone="emerald" />
       <Meter title="Diğer kullanım (ajan)" cat={usage?.agent} tone="sky" />
+      <UsageLogsTable />
     </div>
   );
 }

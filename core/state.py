@@ -64,6 +64,8 @@ class AthenaState(TypedDict):
     # Attached materials injected from chat uploads: [{name, markdown, path}].
     attachments: NotRequired[list]
 
+    # Model slug override from the chat request, applied in chat_node if present.
+    model_override: NotRequired[Optional[str]]
 
 __all__ = [
     "CognitiveLoadStatus",

@@ -65,10 +65,11 @@ Rules:
    (RPE 1-10 x minutes): e.g. a "very hard 2-hour deep-work session" ≈ 9 x 120 ≈
    1000; a "light 30-min review" ≈ 3 x 30 ≈ 90. Only add load when the note actually
    signals effort/difficulty; set task_id to the note's task when known.
-2. PROGRESS: If a note reports concrete progress on a task — possibly a DIFFERENT
-   task than the one the note is attached to (e.g. a daily note that advances a
-   project) — emit a "task_progress_updates" entry with that task's id and the new
-   overall progress percentage (0-100). Only reference task ids present in the input.
+2. PROGRESS: If a note reports concrete progress on a task or SUBTASK — possibly a
+   DIFFERENT task than the one the note is attached to — emit a "task_progress_updates"
+   entry with that task's id and the new overall progress percentage (0-100).
+   If a note says a task or subtask is "done" or "completed", set its progress to 100.
+   Only reference task ids present in the input.
 
 Be conservative: if a note is purely descriptive with no effort signal and no
 progress, produce nothing for it. Never invent task ids. Return only the structured
