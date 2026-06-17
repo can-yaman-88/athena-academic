@@ -5,6 +5,7 @@ const links = [
   { to: "/pdf", label: "PDF Otomasyonu", end: false },
   { to: "/manage", label: "Görevler", end: false },
   { to: "/workouts", label: "Antrenman", end: false },
+  { to: "/ideas", label: "Fikir Defteri", end: false },
 ];
 
 export default function Layout() {

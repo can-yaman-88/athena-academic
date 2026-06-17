@@ -248,6 +248,28 @@ class PdfJob(_StrictModel):
     summary: str = Field(default="", description="Human-readable outcome summary.")
 
 
+class JournalItemType(str, Enum):
+    IDEA = "idea"
+    PROMISE = "promise"
+    CRITICISM = "criticism"
+    GOAL = "goal"
+    TASK = "task"
+
+
+class JournalItem(_StrictModel):
+    id: str = Field(default_factory=_new_id)
+    journal_id: str = Field(description="Parent journal ID.")
+    type: JournalItemType = Field(description="Category of the item.")
+    content: str = Field(description="Content of the idea, promise, etc.")
+
+
+class Journal(_StrictModel):
+    id: str = Field(default_factory=_new_id)
+    date: str = Field(description="YYYY-MM-DD date string.")
+    content: str = Field(default="", description="Markdown content.")
+    processed: bool = Field(default=False, description="Has it been analyzed by AI?")
+
+
 __all__ = [
     "AcademicSubtype",
     "LoadAdjustment",
@@ -261,4 +283,7 @@ __all__ = [
     "TaskCategory",
     "TaskStatus",
     "WorkoutStatus",
+    "JournalItemType",
+    "JournalItem",
+    "Journal",
 ]

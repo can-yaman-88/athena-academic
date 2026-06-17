@@ -333,3 +333,34 @@ export async function streamChat(
     }
   }
 }
+
+// --------------------------------------------------------------------------- //
+// Journals & Ideas
+// --------------------------------------------------------------------------- //
+
+export interface Journal {
+  id: string;
+  date: string; // YYYY-MM-DD
+  content: string;
+  processed: boolean;
+}
+
+export interface JournalItem {
+  id: string;
+  journal_id: string;
+  type: "idea" | "promise" | "criticism" | "goal" | "task";
+  content: string;
+}
+
+export const getJournals = () => jget<Journal[]>("/journals");
+export const upsertJournal = (date: string, content: string) =>
+  jsend<Journal>("/journals", "POST", { date, content });
+export const deleteJournal = (id: string) => jsend<{ status: string }>(`/journals/${id}`, "DELETE");
+
+export const getJournalItems = () => jget<JournalItem[]>("/journal-items");
+export const deleteJournalItem = (id: string) => jsend<{ status: string }>(`/journal-items/${id}`, "DELETE");
+
+export const analyzeJournals = (journalIds: string[]) =>
+  jsend<{ status: string; extracted: number }>("/journals/ai-analyze", "POST", {
+    journal_ids: journalIds,
+  });

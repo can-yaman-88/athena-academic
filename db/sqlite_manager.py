@@ -47,6 +47,9 @@ from core.schemas import (
     TaskCategory,
     TaskStatus,
     WorkoutStatus,
+    Journal,
+    JournalItem,
+    JournalItemType,
 )
 from db.exceptions import DatabaseError, RecordNotFoundError
 
@@ -160,6 +163,33 @@ CREATE TABLE IF NOT EXISTS pdf_jobs (
 );
 """
 
+_CREATE_JOURNALS = """
+CREATE TABLE IF NOT EXISTS journals (
+    id        TEXT PRIMARY KEY,
+    date      TEXT NOT NULL,
+    content   TEXT NOT NULL DEFAULT '',
+    processed INTEGER NOT NULL DEFAULT 0
+);
+"""
+
+_CREATE_JOURNALS_DATE_INDEX = (
+    "CREATE INDEX IF NOT EXISTS idx_journals_date ON journals (date);"
+)
+
+_CREATE_JOURNAL_ITEMS = """
+CREATE TABLE IF NOT EXISTS journal_items (
+    id         TEXT PRIMARY KEY,
+    journal_id TEXT NOT NULL,
+    type       TEXT NOT NULL,
+    content    TEXT NOT NULL,
+    FOREIGN KEY(journal_id) REFERENCES journals(id) ON DELETE CASCADE
+);
+"""
+
+_CREATE_JOURNAL_ITEMS_INDEX = (
+    "CREATE INDEX IF NOT EXISTS idx_journal_items_journal_id ON journal_items (journal_id);"
+)
+
 
 class SQLiteManager:
     """Async CRUD manager backed by a single ``aiosqlite`` connection."""
@@ -233,6 +263,10 @@ class SQLiteManager:
         await conn.execute(_CREATE_LOAD_ADJ_DATE_INDEX)
         await conn.execute(_CREATE_CHAT_MATERIALS)
         await conn.execute(_CREATE_PDF_JOBS)
+        await conn.execute(_CREATE_JOURNALS)
+        await conn.execute(_CREATE_JOURNALS_DATE_INDEX)
+        await conn.execute(_CREATE_JOURNAL_ITEMS)
+        await conn.execute(_CREATE_JOURNAL_ITEMS_INDEX)
         await conn.commit()
         await self._migrate_task_columns()
 
@@ -732,6 +766,74 @@ class SQLiteManager:
             "SELECT * FROM pdf_jobs ORDER BY created_at DESC LIMIT ?", (limit,)
         )
         return [self._row_to_pdf_job(row) for row in rows]
+
+    # ------------------------------------------------------------------ #
+    # Journals & JournalItems
+    # ------------------------------------------------------------------ #
+
+    def _row_to_journal(self, row: aiosqlite.Row) -> Journal:
+        return Journal(
+            id=row["id"],
+            date=row["date"],
+            content=row["content"],
+            processed=bool(row["processed"]),
+        )
+
+    def _row_to_journal_item(self, row: aiosqlite.Row) -> JournalItem:
+        return JournalItem(
+            id=row["id"],
+            journal_id=row["journal_id"],
+            type=JournalItemType(row["type"]),
+            content=row["content"],
+        )
+
+    async def get_journals(self) -> list[Journal]:
+        rows = await self._fetchall("SELECT * FROM journals ORDER BY date DESC", ())
+        return [self._row_to_journal(row) for row in rows]
+
+    async def get_journal(self, journal_id: str) -> Journal:
+        row = await self._fetchone("SELECT * FROM journals WHERE id = ?", (journal_id,))
+        if row is None:
+            raise RecordNotFoundError(f"Journal not found: {journal_id}")
+        return self._row_to_journal(row)
+
+    async def upsert_journal(self, journal: Journal) -> Journal:
+        await self._write(
+            """
+            INSERT INTO journals (id, date, content, processed)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                date=excluded.date,
+                content=excluded.content,
+                processed=excluded.processed
+            """,
+            (journal.id, journal.date, journal.content, int(journal.processed)),
+        )
+        return journal
+
+    async def delete_journal(self, journal_id: str) -> None:
+        await self._write("DELETE FROM journals WHERE id = ?", (journal_id,))
+
+    async def get_journal_items(self) -> list[JournalItem]:
+        rows = await self._fetchall("SELECT * FROM journal_items ORDER BY rowid DESC", ())
+        return [self._row_to_journal_item(row) for row in rows]
+
+    async def upsert_journal_item(self, item: JournalItem) -> JournalItem:
+        await self._write(
+            """
+            INSERT INTO journal_items (id, journal_id, type, content)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                journal_id=excluded.journal_id,
+                type=excluded.type,
+                content=excluded.content
+            """,
+            (item.id, item.journal_id, item.type.value, item.content),
+        )
+        return item
+
+    async def delete_journal_item(self, item_id: str) -> None:
+        await self._write("DELETE FROM journal_items WHERE id = ?", (item_id,))
 
 
 __all__ = ["SQLiteManager"]

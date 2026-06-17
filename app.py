@@ -140,6 +140,13 @@ class ChatRequest(BaseModel):
     system_prompt: Optional[str] = None
     history: list[dict[str, str]] = Field(default_factory=list)
 
+class JournalRequest(BaseModel):
+    date: str = Field(min_length=1)
+    content: str
+
+class JournalAnalyzeRequest(BaseModel):
+    journal_ids: list[str]
+
 
 class TaskCreateRequest(BaseModel):
     title: str = Field(min_length=1)
@@ -370,6 +377,7 @@ async def chat_upload(
         id=material_id, name=filename, kind=kind, source_path=str(dest),
         markdown=markdown,
     )
+    request.app.state.log_bus.emit(f"Yeni eklenti yüklendi: {filename} ({kind})", level="info")
     preview = markdown[:500]
     return {
         "id": material_id,
@@ -408,6 +416,7 @@ async def upload(
         sqlite_manager=request.app.state.sqlite,
     )
     logger.info("queued upload %s (%d bytes) for processing", filename, len(content))
+    request.app.state.log_bus.emit(f"Yeni PDF İşlenmek Üzere Sıraya Alındı: {filename} ({len(content)} bytes)", level="info")
     return {
         "status": "accepted",
         "filename": filename,
@@ -867,5 +876,83 @@ async def logs_stream(request: Request) -> StreamingResponse:
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
+
+# --------------------------------------------------------------------------- #
+# Journals
+# --------------------------------------------------------------------------- #
+from core.schemas import Journal, JournalItem, JournalItemType
+
+@app.get("/journals")
+async def get_journals(request: Request) -> list[dict[str, Any]]:
+    db: SQLiteManager = request.app.state.sqlite
+    journals = await db.get_journals()
+    return [j.model_dump() for j in journals]
+
+@app.post("/journals")
+async def upsert_journal(request: Request, body: JournalRequest) -> dict[str, Any]:
+    db: SQLiteManager = request.app.state.sqlite
+    # Try to find existing journal for this date
+    journals = await db.get_journals()
+    existing = next((j for j in journals if j.date == body.date), None)
+    
+    if existing:
+        existing.content = body.content
+        existing.processed = False
+        saved = await db.upsert_journal(existing)
+    else:
+        new_j = Journal(date=body.date, content=body.content)
+        saved = await db.upsert_journal(new_j)
+    
+    return saved.model_dump()
+
+@app.delete("/journals/{journal_id}")
+async def delete_journal(request: Request, journal_id: str) -> dict[str, str]:
+    db: SQLiteManager = request.app.state.sqlite
+    await db.delete_journal(journal_id)
+    return {"status": "ok"}
+
+@app.get("/journal-items")
+async def get_journal_items(request: Request) -> list[dict[str, Any]]:
+    db: SQLiteManager = request.app.state.sqlite
+    items = await db.get_journal_items()
+    return [i.model_dump() for i in items]
+
+@app.delete("/journal-items/{item_id}")
+async def delete_journal_item(request: Request, item_id: str) -> dict[str, str]:
+    db: SQLiteManager = request.app.state.sqlite
+    await db.delete_journal_item(item_id)
+    return {"status": "ok"}
+
+@app.post("/journals/ai-analyze")
+async def analyze_journals(request: Request, body: JournalAnalyzeRequest) -> dict[str, Any]:
+    db: SQLiteManager = request.app.state.sqlite
+    from core.journal_analyzer import analyze_journal, JournalItemPayload
+    from core.usage_callback import AgentUsageCallback
+
+    extracted_items_count = 0
+    for jid in body.journal_ids:
+        try:
+            journal = await db.get_journal(jid)
+            if not journal.processed:
+                analysis = await analyze_journal(
+                    journal.content, 
+                    callbacks=[AgentUsageCallback(request.app.state.usage)]
+                )
+                
+                for item in analysis.items:
+                    new_item = JournalItem(
+                        journal_id=journal.id,
+                        type=item.type,
+                        content=item.content
+                    )
+                    await db.upsert_journal_item(new_item)
+                
+                journal.processed = True
+                await db.upsert_journal(journal)
+                extracted_items_count += len(analysis.items)
+        except Exception as exc:
+            request.app.state.log_bus.emit(f"Failed to analyze journal {jid}: {exc}", level="error")
+
+    return {"status": "ok", "extracted": extracted_items_count}
 
 __all__ = ["app"]

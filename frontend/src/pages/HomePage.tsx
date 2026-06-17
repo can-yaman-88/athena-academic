@@ -3,12 +3,43 @@ import { getDashboard, type DashboardData } from "../api";
 import { Badge, Card, Button } from "../ui";
 import ChatTerminal from "../components/ChatTerminal";
 import TaskCard from "../components/TaskCard";
+import NotionEditor from "../components/NotionEditor";
+import { upsertJournal, getJournals, type Journal } from "../api";
 
 export default function HomePage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState("");
   const [timeFilter, setTimeFilter] = useState<"Tümü" | "Bugün" | "Bu hafta" | "Bu ay">("Tümü");
   const [statusFilter, setStatusFilter] = useState<"Tümü" | "Tamamlandı" | "Bekliyor">("Tümü");
+
+  // Journal Modal
+  const [showJournalModal, setShowJournalModal] = useState(false);
+  const [todayJournal, setTodayJournal] = useState<Journal | null>(null);
+
+  useEffect(() => {
+    // Load today's journal on mount
+    const loadJournal = async () => {
+      try {
+        const journals = await getJournals();
+        const todayStr = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD
+        const todayJ = journals.find(j => j.date === todayStr);
+        if (todayJ) setTodayJournal(todayJ);
+      } catch (e) {
+        console.error("Journal loading error:", e);
+      }
+    };
+    void loadJournal();
+  }, []);
+
+  const handleSaveJournal = async (content: string) => {
+    const todayStr = new Date().toLocaleDateString("sv-SE");
+    try {
+      const saved = await upsertJournal(todayStr, content);
+      setTodayJournal(saved);
+    } catch (e) {
+      console.error("Failed to save journal:", e);
+    }
+  };
 
   useEffect(() => {
     const refresh = async () => {
@@ -60,9 +91,14 @@ export default function HomePage() {
       <Card
         title="Günüm"
         right={
-          <Badge tone={data?.pending_count ? "amber" : "emerald"}>
-            {data?.pending_count ?? 0} bekleyen
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => setShowJournalModal(true)}>
+              Günlük/Fikir Ekle
+            </Button>
+            <Badge tone={data?.pending_count ? "amber" : "emerald"}>
+              {data?.pending_count ?? 0} bekleyen
+            </Badge>
+          </div>
         }
         bodyClassName="flex flex-col gap-3 overflow-y-auto p-4"
       >
@@ -143,6 +179,31 @@ export default function HomePage() {
       <div className="h-full min-h-0">
         <ChatTerminal />
       </div>
+
+      {/* Journal Modal */}
+      {showJournalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="flex h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-zinc-800 p-4">
+              <h2 className="text-lg font-semibold text-zinc-100">
+                Günün Fikirleri ({new Date().toLocaleDateString("tr-TR")})
+              </h2>
+              <button 
+                className="text-zinc-400 hover:text-white"
+                onClick={() => setShowJournalModal(false)}
+              >
+                Kapat
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <NotionEditor 
+                initialContent={todayJournal?.content || ""}
+                onChange={(html) => handleSaveJournal(html)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
