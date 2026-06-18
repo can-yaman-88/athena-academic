@@ -23,7 +23,7 @@ from typing import Any, Optional
 class LogBus:
     """Ring buffer + async pub/sub for structured log records."""
 
-    def __init__(self, capacity: int = 500) -> None:
+    def __init__(self, capacity: int = 2000) -> None:
         self._buffer: deque[dict[str, Any]] = deque(maxlen=capacity)
         self._subscribers: set[asyncio.Queue[dict[str, Any]]] = set()
         self._loop: Optional[asyncio.AbstractEventLoop] = None

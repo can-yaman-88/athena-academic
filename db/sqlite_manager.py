@@ -36,7 +36,6 @@ import json
 from config import settings
 from core.schemas import (
     AcademicSubtype,
-    LoadAdjustment,
     Material,
     Note,
     PdfJob,
@@ -102,14 +101,14 @@ CREATE TABLE IF NOT EXISTS physical_loads (
     id               TEXT PRIMARY KEY,
     date             TEXT NOT NULL,
     duration_minutes INTEGER NOT NULL,
-    rpe_score        INTEGER NOT NULL,
-    calculated_load  REAL NOT NULL,
+    rpe_score        INTEGER,
     status           TEXT NOT NULL DEFAULT 'completed',
     title            TEXT,
     distance_km      REAL,
     pace             TEXT,
     avg_speed_kmh    REAL,
-    avg_hr           INTEGER
+    avg_hr           INTEGER,
+    note             TEXT
 );
 """
 
@@ -121,6 +120,7 @@ _LOAD_COLUMN_MIGRATIONS = [
     ("pace", "pace TEXT"),
     ("avg_speed_kmh", "avg_speed_kmh REAL"),
     ("avg_hr", "avg_hr INTEGER"),
+    ("note", "note TEXT"),
 ]
 
 _CREATE_CHAT_MATERIALS = """
@@ -134,19 +134,6 @@ CREATE TABLE IF NOT EXISTS chat_materials (
 );
 """
 
-_CREATE_LOAD_ADJUSTMENTS = """
-CREATE TABLE IF NOT EXISTS load_adjustments (
-    id       TEXT PRIMARY KEY,
-    date     TEXT NOT NULL,
-    amount   REAL NOT NULL,
-    reason   TEXT NOT NULL DEFAULT '',
-    task_id  TEXT
-);
-"""
-
-_CREATE_LOAD_ADJ_DATE_INDEX = (
-    "CREATE INDEX IF NOT EXISTS idx_load_adj_date ON load_adjustments (date);"
-)
 
 _CREATE_PDF_JOBS = """
 CREATE TABLE IF NOT EXISTS pdf_jobs (
@@ -259,14 +246,14 @@ class SQLiteManager:
         await conn.execute(_CREATE_TASKS_STATUS_INDEX)
         await conn.execute(_CREATE_STUDY_SESSIONS)
         await conn.execute(_CREATE_PHYSICAL_LOADS)
-        await conn.execute(_CREATE_LOAD_ADJUSTMENTS)
-        await conn.execute(_CREATE_LOAD_ADJ_DATE_INDEX)
         await conn.execute(_CREATE_CHAT_MATERIALS)
         await conn.execute(_CREATE_PDF_JOBS)
         await conn.execute(_CREATE_JOURNALS)
         await conn.execute(_CREATE_JOURNALS_DATE_INDEX)
         await conn.execute(_CREATE_JOURNAL_ITEMS)
         await conn.execute(_CREATE_JOURNAL_ITEMS_INDEX)
+        # Cognitive-load scoring was removed; drop its legacy table if present.
+        await conn.execute("DROP TABLE IF EXISTS load_adjustments")
         await conn.commit()
         await self._migrate_task_columns()
 
@@ -296,6 +283,48 @@ class SQLiteManager:
                 added = True
         if added:
             await conn.commit()
+        await self._migrate_physical_loads_v3()
+
+    async def _migrate_physical_loads_v3(self) -> None:
+        """Drop the legacy ``calculated_load`` column and relax ``rpe_score``.
+
+        Cognitive-load scoring was removed, so ``calculated_load`` is gone and
+        ``rpe_score`` is now optional (stored only when the source provides it).
+        SQLite can't relax a NOT NULL in place, so when the old column is still
+        present we rebuild the table once, preserving every row.
+        """
+        conn = self._require_conn()
+        async with conn.execute("PRAGMA table_info(physical_loads)") as cursor:
+            cols = {row[1] for row in await cursor.fetchall()}
+        if "calculated_load" not in cols:
+            return  # already migrated
+        await conn.executescript(
+            """
+            BEGIN;
+            CREATE TABLE physical_loads_new (
+                id               TEXT PRIMARY KEY,
+                date             TEXT NOT NULL,
+                duration_minutes INTEGER NOT NULL,
+                rpe_score        INTEGER,
+                status           TEXT NOT NULL DEFAULT 'completed',
+                title            TEXT,
+                distance_km      REAL,
+                pace             TEXT,
+                avg_speed_kmh    REAL,
+                avg_hr           INTEGER,
+                note             TEXT
+            );
+            INSERT INTO physical_loads_new
+                (id, date, duration_minutes, rpe_score, status, title,
+                 distance_km, pace, avg_speed_kmh, avg_hr, note)
+            SELECT id, date, duration_minutes, rpe_score, status, title,
+                   distance_km, pace, avg_speed_kmh, avg_hr, note
+            FROM physical_loads;
+            DROP TABLE physical_loads;
+            ALTER TABLE physical_loads_new RENAME TO physical_loads;
+            COMMIT;
+            """
+        )
 
     async def close(self) -> None:
         """Close the underlying connection if open."""
@@ -429,7 +458,6 @@ class SQLiteManager:
 
     @staticmethod
     def _row_to_physical_load(row: aiosqlite.Row) -> PhysicalLoad:
-        # calculated_load is computed by the model, not passed in.
         keys = set(row.keys())
         status = row["status"] if "status" in keys and row["status"] else "completed"
         return PhysicalLoad(
@@ -443,6 +471,7 @@ class SQLiteManager:
             pace=row["pace"] if "pace" in keys else None,
             avg_speed_kmh=row["avg_speed_kmh"] if "avg_speed_kmh" in keys else None,
             avg_hr=row["avg_hr"] if "avg_hr" in keys else None,
+            note=row["note"] if "note" in keys else None,
         )
 
     # ------------------------------------------------------------------ #
@@ -602,8 +631,8 @@ class SQLiteManager:
         await self._write(
             """
             INSERT OR REPLACE INTO physical_loads
-                (id, date, duration_minutes, rpe_score, calculated_load,
-                 status, title, distance_km, pace, avg_speed_kmh, avg_hr)
+                (id, date, duration_minutes, rpe_score,
+                 status, title, distance_km, pace, avg_speed_kmh, avg_hr, note)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -611,13 +640,13 @@ class SQLiteManager:
                 load.date.isoformat(),
                 load.duration_minutes,
                 load.rpe_score,
-                load.calculated_load,
                 load.status.value,
                 load.title,
                 load.distance_km,
                 load.pace,
                 load.avg_speed_kmh,
                 load.avg_hr,
+                load.note,
             ),
         )
         return load
@@ -637,42 +666,9 @@ class SQLiteManager:
 
     async def list_physical_loads(self) -> list[PhysicalLoad]:
         rows = await self._fetchall(
-            "SELECT * FROM physical_loads ORDER BY date", ()
+            "SELECT * FROM physical_loads ORDER BY date DESC", ()
         )
         return [self._row_to_physical_load(row) for row in rows]
-
-    # ------------------------------------------------------------------ #
-    # Cognitive load adjustments (day-scoped, from note analysis)
-    # ------------------------------------------------------------------ #
-    async def create_load_adjustment(self, adj: LoadAdjustment) -> LoadAdjustment:
-        await self._write(
-            """
-            INSERT OR REPLACE INTO load_adjustments (id, date, amount, reason, task_id)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (adj.id, adj.date.isoformat(), adj.amount, adj.reason, adj.task_id),
-        )
-        return adj
-
-    async def list_load_adjustments(
-        self, on_date: date_type | None = None
-    ) -> list[LoadAdjustment]:
-        if on_date is None:
-            rows = await self._fetchall("SELECT * FROM load_adjustments", ())
-        else:
-            rows = await self._fetchall(
-                "SELECT * FROM load_adjustments WHERE date = ?", (on_date.isoformat(),)
-            )
-        return [
-            LoadAdjustment(
-                id=row["id"],
-                date=date_type.fromisoformat(row["date"]),
-                amount=row["amount"],
-                reason=row["reason"] or "",
-                task_id=row["task_id"],
-            )
-            for row in rows
-        ]
 
     # ------------------------------------------------------------------ #
     # Chat-uploaded materials (PDF->MD / image->MD attachments)

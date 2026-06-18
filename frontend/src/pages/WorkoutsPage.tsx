@@ -4,18 +4,17 @@ import {
   deleteWorkout,
   getWorkouts,
   streamChat,
+  updateWorkout,
   uploadWorkoutFile,
-  syncRunalyze,
   type Workout,
 } from "../api";
 import { Badge, Button, Card } from "../ui";
+import Modal from "../components/Modal";
+import NotionEditor from "../components/NotionEditor";
+import { useSync } from "../SyncContext";
 
 const inputCls =
   "rounded-lg border border-line-strong bg-surface-2 px-2.5 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-500";
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function Metrics({ w }: { w: Workout }) {
   const items: [string, string][] = [];
@@ -38,24 +37,32 @@ function Metrics({ w }: { w: Workout }) {
 function WorkoutCard({
   w,
   onChanged,
+  onOpen,
 }: {
   w: Workout;
   onChanged: () => void;
+  onOpen: () => void;
 }) {
+  const stop = (fn: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    fn();
+  };
   return (
-    <div className="rounded-lg border border-line bg-surface-2/50 p-3">
+    <div
+      onClick={onOpen}
+      className="cursor-pointer rounded-lg border border-line bg-surface-2/50 p-3 transition-colors hover:border-line-strong"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-zinc-100">
               {w.title || "Antrenman"}
             </span>
-            <Badge tone={w.calculated_load > 400 ? "rose" : "zinc"}>
-              yük {w.calculated_load}
-            </Badge>
+            {w.note && <Badge tone="sky">not</Badge>}
           </div>
           <div className="mt-0.5 text-xs text-zinc-500">
-            {w.date} · {w.duration_minutes} dk · RPE {w.rpe_score}
+            {w.date} · {w.duration_minutes} dk
+            {w.rpe_score != null && ` · RPE ${w.rpe_score}`}
           </div>
           <Metrics w={w} />
         </div>
@@ -63,20 +70,20 @@ function WorkoutCard({
           {w.status === "planned" && (
             <Button
               variant="ghost"
-              onClick={async () => {
+              onClick={stop(async () => {
                 await completeWorkout(w.id);
                 onChanged();
-              }}
+              })}
             >
               Tamamla
             </Button>
           )}
           <Button
             variant="danger"
-            onClick={async () => {
+            onClick={stop(async () => {
               await deleteWorkout(w.id);
               onChanged();
-            }}
+            })}
           >
             Sil
           </Button>
@@ -86,19 +93,112 @@ function WorkoutCard({
   );
 }
 
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-line bg-surface-2/60 px-3 py-2">
+      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-500">
+        {label}
+      </div>
+      <div className="mt-0.5 text-sm text-zinc-100">{value}</div>
+    </div>
+  );
+}
+
+function WorkoutDetailModal({
+  w,
+  onClose,
+  onChanged,
+}: {
+  w: Workout | null;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState("");
+
+  useEffect(() => {
+    setNote(w?.note || "");
+    setSavedMsg("");
+  }, [w]);
+
+  if (!w) return null;
+
+  async function saveNote() {
+    if (!w) return;
+    setSaving(true);
+    setSavedMsg("");
+    try {
+      await updateWorkout(w.id, { note });
+      setSavedMsg("✓ Not kaydedildi");
+      onChanged();
+    } catch (e) {
+      setSavedMsg(`✗ ${(e as Error).message}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal open={!!w} onClose={onClose} title={w.title || "Antrenman"} widthClass="max-w-2xl">
+      <div className="flex h-full flex-col gap-4 overflow-y-auto">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <DetailRow label="Tarih" value={w.date} />
+          <DetailRow label="Süre" value={`${w.duration_minutes} dk`} />
+          <DetailRow
+            label="Durum"
+            value={w.status === "completed" ? "Tamamlandı" : "Planlı"}
+          />
+          {w.rpe_score != null && <DetailRow label="RPE" value={w.rpe_score} />}
+          {w.distance_km != null && (
+            <DetailRow label="Mesafe" value={`${w.distance_km} km`} />
+          )}
+          {w.pace && <DetailRow label="Tempo" value={`${w.pace}/km`} />}
+          {w.avg_speed_kmh != null && (
+            <DetailRow label="Hız" value={`${w.avg_speed_kmh} km/s`} />
+          )}
+          {w.avg_hr != null && <DetailRow label="Nabız" value={`${w.avg_hr} bpm`} />}
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-wider text-zinc-500">
+              Not
+            </span>
+            <div className="flex items-center gap-2">
+              {savedMsg && <span className="text-xs text-zinc-400">{savedMsg}</span>}
+              <Button size="sm" disabled={saving} onClick={() => void saveNote()}>
+                {saving ? "Kaydediliyor…" : "Notu Kaydet"}
+              </Button>
+            </div>
+          </div>
+          <div className="min-h-[220px] overflow-hidden rounded-lg border border-line-strong">
+            {/* keyed by id so the editor remounts (and reloads content) per workout */}
+            <NotionEditor key={w.id} initialContent={note} onChange={setNote} />
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export default function WorkoutsPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [uploadMsg, setUploadMsg] = useState("");
   const [planText, setPlanText] = useState("");
   const [planMsg, setPlanMsg] = useState("");
   const [planBusy, setPlanBusy] = useState(false);
+  const [selected, setSelected] = useState<Workout | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [syncBusy, setSyncBusy] = useState(false);
-  const [syncMsg, setSyncMsg] = useState("");
+  const { syncBusy, syncMsg, runSync } = useSync();
 
   const refresh = useCallback(async () => {
     try {
-      setWorkouts(await getWorkouts());
+      const list = await getWorkouts();
+      list.sort((a, b) => b.date.localeCompare(a.date));
+      setWorkouts(list);
+      // keep an open detail modal in sync with refreshed data
+      setSelected((cur) => (cur ? list.find((w) => w.id === cur.id) ?? null : null));
     } catch {
       /* ignore */
     }
@@ -106,20 +206,6 @@ export default function WorkoutsPage() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
-
-  async function handleSyncRunalyze() {
-    setSyncBusy(true);
-    setSyncMsg("");
-    try {
-      const res = await syncRunalyze();
-      setSyncMsg(`✓ ${res.imported} aktivite senkronize edildi`);
-      await refresh();
-    } catch (e) {
-      setSyncMsg(`✗ ${(e as Error).message}`);
-    } finally {
-      setSyncBusy(false);
-    }
-  }
 
   async function upload(file: File) {
     setUploadMsg(`${file.name} içe aktarılıyor…`);
@@ -162,7 +248,7 @@ export default function WorkoutsPage() {
             Runalyze hesabınızdaki son aktiviteleri otomatik olarak Athena'ya çeker. (Sistem ayarlarına RUNALYZE_TOKEN eklenmiş olmalıdır.)
           </p>
           <div className="flex items-center gap-3">
-            <Button disabled={syncBusy} onClick={() => void handleSyncRunalyze()}>
+            <Button disabled={syncBusy} onClick={() => void runSync(refresh)}>
               {syncBusy ? "Senkronize ediliyor..." : "Runalyze ile Senkronize Et"}
             </Button>
             {syncMsg && <span className="text-xs text-zinc-400">{syncMsg}</span>}
@@ -199,13 +285,23 @@ export default function WorkoutsPage() {
       <div className="grid min-h-0 grid-rows-2 gap-4">
         <Card title={`Planlı (${planned.length})`} bodyClassName="space-y-2 overflow-y-auto p-4">
           {planned.length === 0 && <p className="text-sm text-zinc-500">Planlı antrenman yok.</p>}
-          {planned.map((w) => <WorkoutCard key={w.id} w={w} onChanged={() => void refresh()} />)}
+          {planned.map((w) => (
+            <WorkoutCard key={w.id} w={w} onChanged={() => void refresh()} onOpen={() => setSelected(w)} />
+          ))}
         </Card>
         <Card title={`Tamamlanan (${completed.length})`} bodyClassName="space-y-2 overflow-y-auto p-4">
           {completed.length === 0 && <p className="text-sm text-zinc-500">Tamamlanan antrenman yok.</p>}
-          {completed.map((w) => <WorkoutCard key={w.id} w={w} onChanged={() => void refresh()} />)}
+          {completed.map((w) => (
+            <WorkoutCard key={w.id} w={w} onChanged={() => void refresh()} onOpen={() => setSelected(w)} />
+          ))}
         </Card>
       </div>
+
+      <WorkoutDetailModal
+        w={selected}
+        onClose={() => setSelected(null)}
+        onChanged={() => void refresh()}
+      />
     </div>
   );
 }

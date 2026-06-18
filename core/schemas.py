@@ -20,7 +20,7 @@ from enum import Enum
 from typing import Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 def _new_id() -> str:
@@ -159,11 +159,10 @@ class StudySession(_StrictModel):
 
 
 class PhysicalLoad(_StrictModel):
-    """A physical training session and its derived training load.
+    """A physical training session and its objective metrics.
 
-    ``calculated_load`` is a computed, read-only value (duration x RPE) — it is
-    never accepted as input but is included in serialisation so it can be
-    persisted and queried.
+    Workouts are a plain record of what was done; RPE is stored only when the
+    source (Runalyze or the user) actually provides it — no value is fabricated.
     """
 
     id: str = Field(default_factory=_new_id, description="UUID4 primary key.")
@@ -171,14 +170,15 @@ class PhysicalLoad(_StrictModel):
     duration_minutes: int = Field(
         gt=0, description="Session length in minutes; must be positive."
     )
-    rpe_score: int = Field(
+    rpe_score: Optional[int] = Field(
+        default=None,
         ge=1,
         le=10,
-        description="Rating of Perceived Exertion on the 1-10 Borg CR10 scale.",
+        description="Rating of Perceived Exertion (Borg CR10); only when provided.",
     )
     status: WorkoutStatus = Field(
         default=WorkoutStatus.COMPLETED,
-        description="planned | completed. Only completed sessions count toward load.",
+        description="planned | completed.",
     )
     title: Optional[str] = Field(
         default=None, description="Optional label, e.g. 'tempo run'."
@@ -190,26 +190,9 @@ class PhysicalLoad(_StrictModel):
     )
     avg_speed_kmh: Optional[float] = Field(default=None, ge=0)
     avg_hr: Optional[int] = Field(default=None, ge=0, le=260)
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def calculated_load(self) -> float:
-        """Session training load, defined as ``duration_minutes * rpe_score``."""
-        return float(self.duration_minutes * self.rpe_score)
-
-
-class LoadAdjustment(_StrictModel):
-    """A day-scoped cognitive-load addition derived from note analysis.
-
-    Summed into a given day's cognitive load alongside the workout-derived load;
-    because the dashboard only counts adjustments dated today, these reset daily.
-    """
-
-    id: str = Field(default_factory=_new_id, description="UUID4 primary key.")
-    date: date_type = Field(default_factory=date_type.today)
-    amount: float = Field(description="Cognitive-load points to add (may be 0+).")
-    reason: str = Field(default="", description="Why this load was added.")
-    task_id: Optional[str] = Field(default=None, description="Source task, if any.")
+    note: Optional[str] = Field(
+        default=None, description="Free-form rich-text (HTML) note for the session."
+    )
 
 
 class PdfJobStatus(str, Enum):
@@ -272,7 +255,6 @@ class Journal(_StrictModel):
 
 __all__ = [
     "AcademicSubtype",
-    "LoadAdjustment",
     "Material",
     "Note",
     "PdfJob",

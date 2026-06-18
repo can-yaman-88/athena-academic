@@ -1,3 +1,5 @@
+import typography from "@tailwindcss/typography";
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
@@ -38,7 +40,35 @@ export default {
       animation: {
         "fade-in": "fade-in 220ms ease both",
       },
+      typography: {
+        // Compact, dark-tuned defaults for rich notes / markdown chat so the
+        // `prose prose-invert` content (editor, task & workout notes, chat) reads
+        // well without the plugin's generous default spacing.
+        DEFAULT: {
+          css: {
+            maxWidth: "none",
+            color: "rgb(228 228 231)", // zinc-200
+            lineHeight: "1.55",
+            "p, ul, ol, blockquote, pre": { marginTop: "0.5em", marginBottom: "0.5em" },
+            "h1, h2, h3, h4": { marginTop: "0.8em", marginBottom: "0.35em" },
+            a: { color: "rgb(110 231 183)" }, // emerald-300
+            code: {
+              color: "rgb(110 231 183)",
+              backgroundColor: "rgba(255,255,255,0.06)",
+              padding: "0.15em 0.35em",
+              borderRadius: "0.3em",
+              fontWeight: "500",
+            },
+            "code::before": { content: '""' },
+            "code::after": { content: '""' },
+            pre: {
+              backgroundColor: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+            },
+          },
+        },
+      },
     },
   },
-  plugins: [],
+  plugins: [typography],
 };

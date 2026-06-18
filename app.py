@@ -38,7 +38,6 @@ from core.log_bus import LogBus, LogBusHandler
 from core.note_analyzer import analyze_notes
 from core.schemas import (
     AcademicSubtype,
-    LoadAdjustment,
     Material,
     Note,
     PhysicalLoad,
@@ -53,8 +52,6 @@ from db.exceptions import RecordNotFoundError
 from db.sqlite_manager import SQLiteManager
 from uuid import uuid4
 
-from tools.agentic_tools import calculate_cognitive_allowance
-from tools.agentic_tools.load_balancer import evaluate_load
 from tools.pdf_engine import process_academic_pdf
 from tools.pdf_engine.automation import AIClient, UsageTracker, build_engine_config
 from tools.pdf_engine.wrapper import _extract_markdown
@@ -206,7 +203,7 @@ class MaterialCreateRequest(BaseModel):
 
 class WorkoutRequest(BaseModel):
     duration_minutes: int = Field(gt=0)
-    rpe_score: int = Field(ge=1, le=10)
+    rpe_score: Optional[int] = Field(default=None, ge=1, le=10)
     date: Optional[date] = None
     status: WorkoutStatus = WorkoutStatus.COMPLETED
     title: Optional[str] = None
@@ -214,6 +211,7 @@ class WorkoutRequest(BaseModel):
     pace: Optional[str] = None
     avg_speed_kmh: Optional[float] = Field(default=None, ge=0)
     avg_hr: Optional[int] = Field(default=None, ge=0, le=260)
+    note: Optional[str] = None
 
 
 class WorkoutUpdateRequest(BaseModel):
@@ -226,6 +224,7 @@ class WorkoutUpdateRequest(BaseModel):
     pace: Optional[str] = None
     avg_speed_kmh: Optional[float] = Field(default=None, ge=0)
     avg_hr: Optional[int] = Field(default=None, ge=0, le=260)
+    note: Optional[str] = None
 
 
 def _sse(payload: dict[str, Any]) -> str:
@@ -233,35 +232,13 @@ def _sse(payload: dict[str, Any]) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
-async def _today_cognitive_load(db: SQLiteManager) -> dict[str, Any]:
-    """Total cognitive load today = today's workout load + today's note adjustments."""
-    today = date.today()
-    loads = await db.list_physical_loads()
-    # Only COMPLETED workouts (today) contribute to cognitive load; planned ones don't.
-    workout_load = sum(
-        load.calculated_load
-        for load in loads
-        if load.date == today and load.status == WorkoutStatus.COMPLETED
-    )
-    adjustments = await db.list_load_adjustments(today)
-    adj_load = sum(a.amount for a in adjustments)
-    total = float(workout_load) + float(adj_load)
+def _strip_html(text: str) -> str:
+    """Reduce rich-text (HTML) note bodies to plain text for the analyzer LLM."""
+    import re
 
-    if total <= 0:
-        return {
-            "calculated_load": 0.0,
-            "heavy_cognitive_blocked": False,
-            "block_duration_hours": 0,
-            "recommended_tasks": [],
-            "blocked_until": None,
-            "directive": "No load logged today — full cognitive capacity available.",
-            "workout_load": float(workout_load),
-            "note_load": float(adj_load),
-        }
-    result = evaluate_load(total).model_dump(mode="json")
-    result["workout_load"] = float(workout_load)
-    result["note_load"] = float(adj_load)
-    return result
+    plain = re.sub(r"<[^>]+>", " ", text or "")
+    plain = plain.replace("&nbsp;", " ")
+    return re.sub(r"\s+", " ", plain).strip()
 
 
 # --------------------------------------------------------------------------- #
@@ -471,15 +448,13 @@ async def pdf_job_artifact(request: Request, job_id: str, name: str) -> FileResp
 # --------------------------------------------------------------------------- #
 @app.get("/dashboard_data")
 async def dashboard_data(request: Request) -> dict[str, Any]:
-    """Return current tasks, pending count, and today's cognitive load."""
+    """Return current tasks and the pending count."""
     db: SQLiteManager = request.app.state.sqlite
     tasks = await db.list_tasks()
     pending_count = len(db.get_pending_tasks())
-    cognitive_load = await _today_cognitive_load(db)
     return {
         "tasks": [t.model_dump(mode="json") for t in tasks],
         "pending_count": pending_count,
-        "cognitive_load": cognitive_load,
     }
 
 
@@ -688,14 +663,13 @@ async def analyze_all_notes(request: Request) -> dict[str, Any]:
             "category": t.category.value,
             "subtype": t.subtype.value if t.subtype else None,
             "progress": t.progress,
-            "notes": [n.text for n in t.notes],
+            "notes": [_strip_html(n.text) for n in t.notes],
         }
         for t in tasks
         if t.notes
     ]
     if not payload:
-        return {"cognitive_load_additions": 0, "task_progress_updates": 0,
-                "message": "No notes to analyze."}
+        return {"task_progress_updates": 0, "message": "No notes to analyze."}
 
     # Tests can inject a fake structured-output runnable on app.state.notes_llm.
     injected = getattr(request.app.state, "notes_llm", None)
@@ -707,13 +681,7 @@ async def analyze_all_notes(request: Request) -> dict[str, Any]:
         logger.exception("note analysis failed")
         raise HTTPException(status_code=503, detail=f"Note analysis failed: {exc}")
 
-    today = date.today()
     valid_ids = {t.id for t in tasks}
-    for add in analysis.cognitive_load_additions:
-        await db.create_load_adjustment(
-            LoadAdjustment(date=today, amount=add.amount, reason=add.reason,
-                           task_id=add.task_id if add.task_id in valid_ids else None)
-        )
     applied_progress = 0
     for upd in analysis.task_progress_updates:
         if upd.task_id not in valid_ids:
@@ -725,11 +693,7 @@ async def analyze_all_notes(request: Request) -> dict[str, Any]:
         await db.update_task(t)
         applied_progress += 1
 
-    return {
-        "cognitive_load_additions": len(analysis.cognitive_load_additions),
-        "task_progress_updates": applied_progress,
-        "added_load": sum(a.amount for a in analysis.cognitive_load_additions),
-    }
+    return {"task_progress_updates": applied_progress}
 
 
 # --------------------------------------------------------------------------- #
@@ -744,7 +708,7 @@ async def list_workouts(request: Request) -> dict[str, Any]:
 
 @app.post("/workouts")
 async def create_workout(request: Request, body: WorkoutRequest) -> dict[str, Any]:
-    """Record a workout (with optional metrics) and return the load directive."""
+    """Record a workout with its (optional) metrics."""
     db: SQLiteManager = request.app.state.sqlite
     load = PhysicalLoad(
         date=body.date or date.today(),
@@ -756,15 +720,10 @@ async def create_workout(request: Request, body: WorkoutRequest) -> dict[str, An
         pace=body.pace,
         avg_speed_kmh=body.avg_speed_kmh,
         avg_hr=body.avg_hr,
+        note=body.note,
     )
     await db.create_physical_load(load)
-    allowance = calculate_cognitive_allowance.invoke(
-        {"rpe_score": body.rpe_score, "duration": float(body.duration_minutes)}
-    )
-    return {
-        "physical_load": load.model_dump(mode="json"),
-        "cognitive_allowance": allowance.model_dump(mode="json"),
-    }
+    return {"physical_load": load.model_dump(mode="json")}
 
 
 @app.post("/workouts/{load_id}/complete")
@@ -805,7 +764,7 @@ async def upload_workouts(
         load = PhysicalLoad(
             date=date.fromisoformat(rec["date"]),
             duration_minutes=rec["duration_minutes"],
-            rpe_score=rec["rpe_score"],
+            rpe_score=rec.get("rpe_score"),
             status=WorkoutStatus.COMPLETED,
             title=rec.get("title"),
             distance_km=rec.get("distance_km"),
@@ -856,11 +815,10 @@ def _runalyze_activity_to_load(act: dict[str, Any]) -> Optional[PhysicalLoad]:
     seconds = act.get("duration") or act.get("elapsed_time") or 0
     duration_min = max(1, round(seconds / 60))
 
-    rpe = act.get("rpe")
-    if not rpe:
-        trimp = act.get("trimp") or act.get("fit_trimp") or 0
-        rpe = int(trimp / 15) if trimp else 5
-    rpe = max(1, min(10, int(rpe)))
+    # RPE is stored only when Runalyze actually reports it — no fabricated
+    # difficulty (cognitive-load scoring was removed). Clamp a real value to 1-10.
+    raw_rpe = act.get("rpe")
+    rpe = max(1, min(10, int(raw_rpe))) if raw_rpe else None
 
     sport = act.get("sport") if isinstance(act.get("sport"), dict) else {}
     typ = act.get("type") if isinstance(act.get("type"), dict) else {}
@@ -1055,7 +1013,7 @@ async def logs_stream(request: Request) -> StreamingResponse:
 
     async def event_stream() -> AsyncIterator[str]:
         try:
-            for record in bus.recent(100):
+            for record in bus.recent(300):
                 yield _sse(record)
             while True:
                 if await request.is_disconnected():

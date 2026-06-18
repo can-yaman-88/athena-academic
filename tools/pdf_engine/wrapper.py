@@ -236,11 +236,15 @@ async def process_academic_pdf(
                 error="empty_transcription",
             )
 
+        logger.info("%s: transcription complete (%d chars LaTeX)", name, len(latex))
+
         # 2) optional pre-compile validation
         if settings.pdf_validate_before_compile:
+            logger.info("%s: validating LaTeX before compile", name)
             latex = await ai.validate_latex(latex, kind="notes")
 
         # 3) compile notes (deterministic + LLM self-correction inside)
+        logger.info("%s: compiling notes PDF", name)
         notes_name = f"{stem}_{ts}"
         notes_result = await engine.compile(
             latex,

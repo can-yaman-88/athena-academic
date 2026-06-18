@@ -83,8 +83,6 @@ export default function HomePage() {
     return true;
   });
 
-  const load = data?.cognitive_load;
-
   return (
     <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-2">
       {/* Left: "Günüm" — today's tasks, deadlines, capacity */}
@@ -105,21 +103,6 @@ export default function HomePage() {
         {error && (
           <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-300">
             API offline: {error}
-          </div>
-        )}
-
-        {load && (
-          <div
-            className={`rounded-lg border p-3 text-sm ${
-              load.heavy_cognitive_blocked
-                ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
-                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-            }`}
-          >
-            <div className="mb-1 text-[11px] uppercase tracking-wider opacity-70">
-              Bilişsel kapasite · yük {load.calculated_load}
-            </div>
-            {load.directive}
           </div>
         )}
 

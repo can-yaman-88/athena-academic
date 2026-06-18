@@ -34,32 +34,23 @@ export interface Task {
   tags: string[];
 }
 
-export interface CognitiveLoad {
-  calculated_load: number;
-  heavy_cognitive_blocked: boolean;
-  block_duration_hours: number;
-  recommended_tasks: string[];
-  blocked_until: string | null;
-  directive: string;
-}
-
 export interface Workout {
   id: string;
   date: string;
   duration_minutes: number;
-  rpe_score: number;
-  calculated_load: number;
+  rpe_score: number | null;
   status: "planned" | "completed";
   title: string | null;
   distance_km: number | null;
   pace: string | null;
   avg_speed_kmh: number | null;
   avg_hr: number | null;
+  note: string | null;
 }
 
 export interface WorkoutInput {
   duration_minutes: number;
-  rpe_score: number;
+  rpe_score?: number | null;
   date?: string;
   status?: "planned" | "completed";
   title?: string | null;
@@ -67,6 +58,7 @@ export interface WorkoutInput {
   pace?: string | null;
   avg_speed_kmh?: number | null;
   avg_hr?: number | null;
+  note?: string | null;
 }
 
 export interface PdfJob {
@@ -113,7 +105,6 @@ export interface UsageLog {
 export interface DashboardData {
   tasks: Task[];
   pending_count: number;
-  cognitive_load: CognitiveLoad;
 }
 
 export interface LogRecord {
@@ -201,9 +192,7 @@ export const generateSubtasks = (taskId: string) =>
   );
 export const analyzeNotes = () =>
   jsend<{
-    cognitive_load_additions: number;
     task_progress_updates: number;
-    added_load?: number;
     message?: string;
   }>("/notes/analyze", "POST");
 
@@ -223,11 +212,7 @@ export const getWorkouts = () =>
   jget<{ workouts: Workout[] }>("/workouts").then((d) => d.workouts);
 
 export const createWorkout = (w: WorkoutInput) =>
-  jsend<{ physical_load: Workout; cognitive_allowance: CognitiveLoad }>(
-    "/workouts",
-    "POST",
-    w
-  );
+  jsend<{ physical_load: Workout }>("/workouts", "POST", w);
 
 export const updateWorkout = (id: string, patch: Partial<WorkoutInput>) =>
   jsend<Workout>(`/workouts/${id}`, "PATCH", patch);

@@ -57,8 +57,7 @@ export default function TaskManager() {
     try {
       const r = await analyzeNotes();
       setAnalyzeMsg(
-        r.message ??
-          `+${r.added_load ?? 0} bilişsel yük, ${r.task_progress_updates} ilerleme güncellendi.`
+        r.message ?? `${r.task_progress_updates} ilerleme güncellendi.`
       );
       await refresh();
     } catch (e) {

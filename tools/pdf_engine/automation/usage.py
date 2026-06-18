@@ -17,11 +17,15 @@ threads and from async code alike.
 from __future__ import annotations
 
 import csv
+import logging
 import threading
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+# Logged under the "athena" namespace so cost lines stream to the live log panel.
+log = logging.getLogger("athena.pdf_engine.usage")
 
 _VALID_CATEGORIES = ("pdf", "agent")
 
@@ -151,6 +155,15 @@ class UsageTracker:
             mu.completion_tokens += ct
             mu.cost_usd += cost
             self._append_csv(category, model, label, pt, ct, cost)
+        log.info(
+            "cost · %s · %s%s · in=%d out=%d ≈$%.4f",
+            category,
+            model,
+            f" · {label}" if label else "",
+            pt,
+            ct,
+            cost,
+        )
 
     def _append_csv(
         self, category: str, model: str, label: str, pt: int, ct: int, cost: float

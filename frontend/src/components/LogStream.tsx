@@ -27,7 +27,7 @@ export default function LogStream({
       try {
         const rec = JSON.parse(ev.data) as LogRecord;
         if (!rec.message) return;
-        setLines((prev) => [...prev.slice(-400), rec]);
+        setLines((prev) => [...prev.slice(-1000), rec]);
         requestAnimationFrame(() =>
           scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
         );

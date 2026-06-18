@@ -10,6 +10,11 @@ services:
     environment:
       # Pass through the OpenRouter key from the host/.env (empty disables /chat).
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      # Runalyze personal-API token + auto-sync interval. Without the token the
+      # container can't read activities and /workouts/sync/runalyze returns 400.
+      # Read from the host/.env at compose time (empty = sync stays idle).
+      - RUNALYZE_TOKEN=${RUNALYZE_TOKEN:-}
+      - RUNALYZE_SYNC_INTERVAL_MIN=${RUNALYZE_SYNC_INTERVAL_MIN:-30}
       # Origins allowed to call the API (consumed by config.py). MUST match the
       # address the browser actually uses to load the frontend. On a remote server
       # set CORS_ORIGINS in .env, e.g. CORS_ORIGINS=http://<server-ip>:8088

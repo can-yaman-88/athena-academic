@@ -171,9 +171,9 @@ class Settings(BaseModel):
         gt=0,
     )
     # How many days back the auto-sync looks (paging stops past this cutoff).
-    runalyze_sync_lookback_days: int = Field(default=14, gt=0)
+    runalyze_sync_lookback_days: int = Field(default=90, gt=0)
     # Safety cap on pages fetched per sync run.
-    runalyze_sync_max_pages: int = Field(default=5, gt=0)
+    runalyze_sync_max_pages: int = Field(default=20, gt=0)
 
     # --- Task extraction defaults -----------------------------------------
     # Applied by the task tool / extractor so the user never has to spell out

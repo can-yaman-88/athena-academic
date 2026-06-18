@@ -1,6 +1,25 @@
 import { useRef, useState, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { streamChat, uploadChatFile, type ChatAttachment } from "../api";
 import personasData from "../data/personas.json";
+
+// Render assistant replies as markdown (headings, lists, code, tables, links)
+// styled for the dark theme. User/system lines stay plain pre-wrapped text.
+function AgentMarkdown({ text }: { text: string }) {
+  return (
+    <div className="prose prose-invert prose-sm max-w-none break-words font-sans prose-pre:my-2">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: (props) => <a {...props} target="_blank" rel="noreferrer" />,
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
+}
 
 interface Line {
   role: "user" | "agent" | "system";
@@ -390,8 +409,12 @@ export default function ChatTerminal() {
           <div key={i} className={`group flex flex-col ${l.role === "user" ? "items-end" : "items-start"}`}>
             <div className={`relative max-w-[85%] rounded-lg px-4 py-2 ${l.role === "user" ? "bg-zinc-800 text-sky-200" : l.role === "agent" ? "bg-elevated text-emerald-200 border border-line" : "bg-transparent text-zinc-500"}`}>
               {l.role === "system" && <span className="select-none mr-2">#</span>}
-              <span className="whitespace-pre-wrap">{l.text}</span>
-              
+              {l.role === "agent" ? (
+                <AgentMarkdown text={l.text} />
+              ) : (
+                <span className="whitespace-pre-wrap">{l.text}</span>
+              )}
+
               {/* ACTION BUTTONS (Hover) */}
               {l.role !== "system" && !searchQuery && (
                 <div className={`absolute top-0 flex gap-1 bg-elevated border border-line-strong rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-100 ${l.role === "user" ? "-left-16" : "-right-16"}`}>

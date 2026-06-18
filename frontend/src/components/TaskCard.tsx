@@ -13,12 +13,19 @@ import {
   type Task,
 } from "../api";
 import { Badge, Button, fmtDeadline } from "../ui";
+import NotionEditor from "./NotionEditor";
 
 const subtypeTone: Record<string, "sky" | "amber" | "emerald"> = {
   project: "sky",
   assignment: "amber",
   study_session: "emerald",
 };
+
+// The note editor emits HTML; treat content as empty when it has no visible text
+// (e.g. "<p></p>") so we don't save blank notes.
+function htmlHasText(html: string): boolean {
+  return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim().length > 0;
+}
 
 export default function TaskCard({
   task,
@@ -32,6 +39,7 @@ export default function TaskCard({
   isSubtask?: boolean;
 }) {
   const [noteText, setNoteText] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [editingNoteText, setEditingNoteText] = useState("");
   const [matName, setMatName] = useState("");
@@ -101,38 +109,47 @@ export default function TaskCard({
           {/* notes */}
           <div>
             <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Notlar</div>
-            <ul className="space-y-1">
+            <ul className="space-y-2">
               {task.notes.map((n) => (
-                <li key={n.id} className="flex items-start justify-between gap-2 text-sm">
+                <li key={n.id} className="rounded-lg border border-line bg-surface-2/50 p-2 text-sm">
                   {editingNote === n.id ? (
-                    <>
-                      <input
-                        value={editingNoteText}
-                        onChange={(e) => setEditingNoteText(e.target.value)}
-                        className="flex-1 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500"
-                      />
-                      <Button variant="ghost" onClick={() => run(async () => { await editNote(task.id, n.id, editingNoteText); setEditingNote(null); })}>Kaydet</Button>
-                    </>
+                    <div>
+                      <div className="overflow-hidden rounded-lg border border-line-strong">
+                        <NotionEditor key={`edit-${n.id}`} initialContent={editingNoteText} onChange={setEditingNoteText} />
+                      </div>
+                      <div className="mt-1 flex gap-2">
+                        <Button size="sm" disabled={!htmlHasText(editingNoteText)} onClick={() => run(async () => { await editNote(task.id, n.id, editingNoteText); setEditingNote(null); })}>Kaydet</Button>
+                        <Button size="sm" variant="subtle" onClick={() => setEditingNote(null)}>İptal</Button>
+                      </div>
+                    </div>
                   ) : (
-                    <>
-                      <span className="flex-1 text-zinc-300">{n.text}</span>
-                      <button className="text-xs text-zinc-500 hover:text-zinc-200" onClick={() => { setEditingNote(n.id); setEditingNoteText(n.text); }}>düzenle</button>
-                      <button className="text-xs text-rose-400/70 hover:text-rose-300" onClick={() => run(() => deleteNote(task.id, n.id))}>sil</button>
-                    </>
+                    <div className="flex items-start justify-between gap-2">
+                      <div
+                        className="prose prose-invert prose-sm min-w-0 flex-1 break-words"
+                        dangerouslySetInnerHTML={{ __html: n.text }}
+                      />
+                      <div className="flex shrink-0 gap-2">
+                        <button className="text-xs text-zinc-500 hover:text-zinc-200" onClick={() => { setEditingNote(n.id); setEditingNoteText(n.text); }}>düzenle</button>
+                        <button className="text-xs text-rose-400/70 hover:text-rose-300" onClick={() => run(() => deleteNote(task.id, n.id))}>sil</button>
+                      </div>
+                    </div>
                   )}
                 </li>
               ))}
             </ul>
-            <div className="mt-1 flex gap-2">
-              <input
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                placeholder="Not ekle…"
-                className="flex-1 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500"
-                onKeyDown={(e) => e.key === "Enter" && noteText.trim() && run(async () => { await addNote(task.id, noteText.trim()); setNoteText(""); })}
-              />
-              <Button variant="ghost" disabled={!noteText.trim()} onClick={() => run(async () => { await addNote(task.id, noteText.trim()); setNoteText(""); })}>Not +</Button>
-            </div>
+            {addingNote ? (
+              <div className="mt-2">
+                <div className="overflow-hidden rounded-lg border border-line-strong">
+                  <NotionEditor key="add-note" initialContent="" onChange={setNoteText} />
+                </div>
+                <div className="mt-1 flex gap-2">
+                  <Button size="sm" disabled={!htmlHasText(noteText)} onClick={() => run(async () => { await addNote(task.id, noteText); setNoteText(""); setAddingNote(false); })}>Kaydet</Button>
+                  <Button size="sm" variant="subtle" onClick={() => { setNoteText(""); setAddingNote(false); }}>İptal</Button>
+                </div>
+              </div>
+            ) : (
+              <Button size="sm" variant="ghost" className="mt-2" onClick={() => setAddingNote(true)}>Not Ekle</Button>
+            )}
           </div>
 
           {/* materials */}
