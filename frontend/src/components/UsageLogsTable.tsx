@@ -51,8 +51,8 @@ export default function UsageLogsTable() {
   }
 
   return (
-    <div className="mt-8 rounded-lg border border-zinc-800 bg-zinc-950/50 flex flex-col">
-      <div className="flex items-center justify-between border-b border-zinc-800 p-4">
+    <div className="mt-8 rounded-lg border border-line bg-surface-2/50 flex flex-col">
+      <div className="flex items-center justify-between border-b border-line p-4">
         <div>
           <h2 className="text-lg font-medium text-zinc-100">Logs</h2>
           <p className="text-sm text-zinc-400">Son 50 API isteği (API requests log)</p>
@@ -65,7 +65,7 @@ export default function UsageLogsTable() {
           <div className="p-4 text-sm text-zinc-500">Yükleniyor...</div>
         ) : (
           <table className="w-full text-left text-sm text-zinc-400">
-            <thead className="bg-zinc-900/50 text-xs uppercase text-zinc-500">
+            <thead className="bg-elevated/60 text-xs uppercase text-zinc-500">
               <tr>
                 <th className="px-4 py-3 font-medium">Date</th>
                 <th className="px-4 py-3 font-medium">Model</th>
@@ -77,7 +77,7 @@ export default function UsageLogsTable() {
             </thead>
             <tbody className="divide-y divide-zinc-800/50">
               {logs.map((log, i) => (
-                <tr key={i} className="hover:bg-zinc-900/30 transition-colors">
+                <tr key={i} className="hover:bg-surface-2/40 transition-colors">
                   <td className="px-4 py-3 whitespace-nowrap">{fmtDate(log.timestamp)}</td>
                   <td className="px-4 py-3 text-zinc-300 font-medium">{log.model}</td>
                   <td className="px-4 py-3">

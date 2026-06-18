@@ -13,7 +13,7 @@ function Meter({
   tone: "emerald" | "sky";
 }) {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-3">
+    <div className="rounded-lg border border-line bg-surface-2/50 p-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-medium text-zinc-200">{title}</span>
         <span

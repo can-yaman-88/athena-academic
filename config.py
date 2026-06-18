@@ -17,6 +17,15 @@ from pydantic import BaseModel, ConfigDict, Field
 _BASE_DIR = Path(__file__).resolve().parent
 
 
+def _env_int(name: str, default: int) -> int:
+    """Read a positive int from the environment, falling back on missing/invalid."""
+    try:
+        value = int(os.environ.get(name, "") or default)
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
 class Settings(BaseModel):
     """Project-wide settings with sensible local defaults."""
 
@@ -151,6 +160,20 @@ class Settings(BaseModel):
     # High-capacity model used for note analysis + subtask generation.
     notes_model: str = Field(default="anthropic/claude-opus-4.8")
     notes_model_max_tokens: int = Field(default=4096, gt=0)
+
+    # --- Runalyze integration ---------------------------------------------
+    # Personal-API token is read from the environment (or .env fallback) at
+    # call time; never stored in settings. Activities are pulled and stored as
+    # completed workouts both on demand and by a background loop.
+    runalyze_token_env: str = Field(default="RUNALYZE_TOKEN")
+    runalyze_sync_interval_min: int = Field(
+        default_factory=lambda: _env_int("RUNALYZE_SYNC_INTERVAL_MIN", 30),
+        gt=0,
+    )
+    # How many days back the auto-sync looks (paging stops past this cutoff).
+    runalyze_sync_lookback_days: int = Field(default=14, gt=0)
+    # Safety cap on pages fetched per sync run.
+    runalyze_sync_max_pages: int = Field(default=5, gt=0)
 
     # --- Task extraction defaults -----------------------------------------
     # Applied by the task tool / extractor so the user never has to spell out

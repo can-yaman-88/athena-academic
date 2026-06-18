@@ -10,25 +10,28 @@ const links = [
 
 export default function Layout() {
   return (
-    <div className="flex h-screen flex-col bg-zinc-950 text-zinc-100">
-      <header className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950/70 px-6 py-3 backdrop-blur-md">
+    <div className="flex h-screen flex-col text-zinc-100">
+      <header className="z-20 flex items-center justify-between border-b border-line bg-[var(--bg)]/80 px-6 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-2.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px] shadow-emerald-400/70" />
-          <h1 className="text-base font-semibold tracking-tight text-emerald-400">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px] shadow-emerald-400/70" />
+          </span>
+          <h1 className="text-base font-semibold tracking-tight text-zinc-50">
             Athena
           </h1>
         </div>
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-0.5 rounded-xl border border-line bg-white/[0.02] p-1">
           {links.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}
               end={l.end}
               className={({ isActive }) =>
-                `rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                `rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                   isActive
-                    ? "bg-emerald-500/15 text-emerald-300"
-                    : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-100"
+                    ? "bg-emerald-500/15 text-emerald-300 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.25)]"
+                    : "text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-100"
                 }`
               }
             >

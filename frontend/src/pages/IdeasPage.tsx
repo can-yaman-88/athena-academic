@@ -72,11 +72,11 @@ export default function IdeasPage() {
         bodyClassName="flex flex-col gap-3 overflow-y-auto p-4"
       >
         {journals.map((j) => (
-          <div key={j.id} className="group relative rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 transition-colors hover:border-zinc-700">
+          <div key={j.id} className="group relative rounded-xl border border-line bg-elevated/60 p-4 transition-colors hover:border-line-strong">
             <div className="flex items-center gap-3">
               <input 
                 type="checkbox" 
-                className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-emerald-500 focus:ring-emerald-500/50 focus:ring-offset-0"
+                className="h-4 w-4 rounded border-line-strong bg-zinc-800 text-emerald-500 focus:ring-emerald-500/50 focus:ring-offset-0"
                 checked={selectedIds.has(j.id)}
                 onChange={() => toggleSelect(j.id)}
                 disabled={j.processed}
@@ -114,7 +114,7 @@ export default function IdeasPage() {
         title="Yapay Zeka Çıkarımları"
         bodyClassName="flex flex-col overflow-hidden"
       >
-        <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-zinc-800 p-2">
+        <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-line p-2">
           {["fikir", "görev", "hedef", "söz", "eleştiri"].map((tab) => (
             <button
               key={tab}
@@ -132,7 +132,7 @@ export default function IdeasPage() {
         <div className="flex-1 overflow-y-auto p-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {filteredItems.map((item) => (
-              <div key={item.id} className="relative rounded-xl border border-zinc-800 bg-zinc-900/30 p-4">
+              <div key={item.id} className="relative rounded-xl border border-line bg-surface-2/40 p-4">
                 <div className="prose prose-sm prose-invert max-w-none text-zinc-300">
                   <ReactMarkdown>{item.content}</ReactMarkdown>
                 </div>
@@ -159,8 +159,8 @@ export default function IdeasPage() {
       {/* Modal for editing journal */}
       {editingJournal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="flex h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-zinc-800 p-4">
+          <div className="flex h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-line p-4">
               <h2 className="text-lg font-semibold text-zinc-100">{editingJournal.date}</h2>
               <button 
                 className="text-zinc-400 hover:text-white"

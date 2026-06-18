@@ -128,7 +128,7 @@ export default function HomePage() {
         </div>
         
         {/* Filters */}
-        <div className="flex flex-col gap-2 rounded-lg bg-zinc-900/50 p-2 text-xs">
+        <div className="flex flex-col gap-2 rounded-lg bg-elevated/60 p-2 text-xs">
           <div className="flex items-center gap-2">
             <span className="text-zinc-500 w-16">Zaman:</span>
             {["Bugün", "Bu hafta", "Bu ay", "Tümü"].map(f => (
@@ -183,8 +183,8 @@ export default function HomePage() {
       {/* Journal Modal */}
       {showJournalModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="flex h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-zinc-800 p-4">
+          <div className="flex h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-line p-4">
               <h2 className="text-lg font-semibold text-zinc-100">
                 Günün Fikirleri ({new Date().toLocaleDateString("tr-TR")})
               </h2>

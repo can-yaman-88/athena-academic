@@ -39,8 +39,8 @@ export default function LogStream({
   }, []);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-zinc-800 bg-black/60 shadow-lg shadow-black/20">
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2.5">
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-line bg-black/60 shadow-lg shadow-black/20">
+      <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
           Canlı Sistem Logları
         </h2>

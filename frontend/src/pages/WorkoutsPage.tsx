@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   completeWorkout,
-  createWorkout,
   deleteWorkout,
   getWorkouts,
   streamChat,
   uploadWorkoutFile,
+  syncRunalyze,
   type Workout,
 } from "../api";
-import { Badge, Button, Card, fmtDeadline } from "../ui";
+import { Badge, Button, Card } from "../ui";
 
 const inputCls =
-  "rounded-lg border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-500";
+  "rounded-lg border border-line-strong bg-surface-2 px-2.5 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-500";
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -43,7 +43,7 @@ function WorkoutCard({
   onChanged: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-3">
+    <div className="rounded-lg border border-line bg-surface-2/50 p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -93,16 +93,8 @@ export default function WorkoutsPage() {
   const [planMsg, setPlanMsg] = useState("");
   const [planBusy, setPlanBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [form, setForm] = useState({
-    duration_minutes: 60,
-    rpe_score: 5,
-    date: today(),
-    status: "completed" as "planned" | "completed",
-    title: "",
-    distance_km: "",
-    pace: "",
-    avg_hr: "",
-  });
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
 
   const refresh = useCallback(async () => {
     try {
@@ -115,19 +107,18 @@ export default function WorkoutsPage() {
     void refresh();
   }, [refresh]);
 
-  async function add() {
-    await createWorkout({
-      duration_minutes: Number(form.duration_minutes) || 1,
-      rpe_score: Number(form.rpe_score) || 1,
-      date: form.date,
-      status: form.status,
-      title: form.title || undefined,
-      distance_km: form.distance_km ? Number(form.distance_km) : undefined,
-      pace: form.pace || undefined,
-      avg_hr: form.avg_hr ? Number(form.avg_hr) : undefined,
-    });
-    setForm({ ...form, title: "", distance_km: "", pace: "", avg_hr: "" });
-    await refresh();
+  async function handleSyncRunalyze() {
+    setSyncBusy(true);
+    setSyncMsg("");
+    try {
+      const res = await syncRunalyze();
+      setSyncMsg(`✓ ${res.imported} aktivite senkronize edildi`);
+      await refresh();
+    } catch (e) {
+      setSyncMsg(`✗ ${(e as Error).message}`);
+    } finally {
+      setSyncBusy(false);
+    }
   }
 
   async function upload(file: File) {
@@ -166,41 +157,16 @@ export default function WorkoutsPage() {
     <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[22rem_1fr]">
       {/* Left: add + upload + plan import */}
       <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">
-        <Card title="Antrenman Ekle" bodyClassName="p-4">
-          <div className="grid grid-cols-2 gap-2">
-            <input className={inputCls} placeholder="Başlık (ops.)" value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            <select className={inputCls} value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value as "planned" | "completed" })}>
-              <option value="completed">Tamamlandı</option>
-              <option value="planned">Planlı</option>
-            </select>
-            <label className="text-xs text-zinc-500">Süre (dk)
-              <input type="number" min={1} className={`${inputCls} w-full`} value={form.duration_minutes}
-                onChange={(e) => setForm({ ...form, duration_minutes: Number(e.target.value) })} />
-            </label>
-            <label className="text-xs text-zinc-500">RPE
-              <input type="number" min={1} max={10} className={`${inputCls} w-full`} value={form.rpe_score}
-                onChange={(e) => setForm({ ...form, rpe_score: Number(e.target.value) })} />
-            </label>
-            <label className="text-xs text-zinc-500">Tarih
-              <input type="date" className={`${inputCls} w-full`} value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })} />
-            </label>
-            <label className="text-xs text-zinc-500">Mesafe (km)
-              <input type="number" step="0.1" className={`${inputCls} w-full`} value={form.distance_km}
-                onChange={(e) => setForm({ ...form, distance_km: e.target.value })} />
-            </label>
-            <label className="text-xs text-zinc-500">Tempo (/km)
-              <input className={`${inputCls} w-full`} placeholder="5:30" value={form.pace}
-                onChange={(e) => setForm({ ...form, pace: e.target.value })} />
-            </label>
-            <label className="text-xs text-zinc-500">Ort. nabız
-              <input type="number" className={`${inputCls} w-full`} value={form.avg_hr}
-                onChange={(e) => setForm({ ...form, avg_hr: e.target.value })} />
-            </label>
+        <Card title="Runalyze Senkronizasyonu" bodyClassName="p-4">
+          <p className="text-xs text-zinc-400 mb-3">
+            Runalyze hesabınızdaki son aktiviteleri otomatik olarak Athena'ya çeker. (Sistem ayarlarına RUNALYZE_TOKEN eklenmiş olmalıdır.)
+          </p>
+          <div className="flex items-center gap-3">
+            <Button disabled={syncBusy} onClick={() => void handleSyncRunalyze()}>
+              {syncBusy ? "Senkronize ediliyor..." : "Runalyze ile Senkronize Et"}
+            </Button>
+            {syncMsg && <span className="text-xs text-zinc-400">{syncMsg}</span>}
           </div>
-          <Button className="mt-3 w-full" onClick={() => void add()}>Ekle</Button>
         </Card>
 
         <Card title="Veri Dosyası İçe Aktar (JSON / CSV / .FIT)" bodyClassName="p-4">
@@ -208,7 +174,7 @@ export default function WorkoutsPage() {
             onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); e.target.value = ""; }} />
           <div
             onClick={() => fileRef.current?.click()}
-            className="flex h-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-700 text-center hover:border-zinc-500"
+            className="flex h-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-line-strong text-center hover:border-zinc-500"
           >
             <p className="text-sm text-zinc-300">Garmin/TrainingPeaks dosyası bırak/seç</p>
             <p className="mt-1 text-xs text-zinc-500">İçe aktarılanlar tamamlanmış sayılır</p>

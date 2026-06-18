@@ -54,7 +54,7 @@ export default function TaskCard({
   };
 
   return (
-    <div className={`rounded-lg border ${isSubtask ? "border-zinc-800/50 bg-zinc-900/30 p-2 mt-2" : "border-zinc-800 bg-zinc-950/50 p-3"}`}>
+    <div className={`rounded-lg border transition-colors hover:border-line-strong ${isSubtask ? "border-line/50 bg-surface-2/40 p-2 mt-2" : "border-line bg-surface-2/50 p-3"}`}>
       {/* header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -90,14 +90,14 @@ export default function TaskCard({
             <span>İlerleme</span>
             <span>{task.progress}%</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
-            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${task.progress}%` }} />
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+            <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-[width] duration-500" style={{ width: `${task.progress}%` }} />
           </div>
         </div>
       )}
 
       {open && (
-        <div className="mt-3 space-y-3 border-t border-zinc-800 pt-3">
+        <div className="mt-3 space-y-3 border-t border-line pt-3">
           {/* notes */}
           <div>
             <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Notlar</div>
@@ -109,7 +109,7 @@ export default function TaskCard({
                       <input
                         value={editingNoteText}
                         onChange={(e) => setEditingNoteText(e.target.value)}
-                        className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500"
+                        className="flex-1 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500"
                       />
                       <Button variant="ghost" onClick={() => run(async () => { await editNote(task.id, n.id, editingNoteText); setEditingNote(null); })}>Kaydet</Button>
                     </>
@@ -128,7 +128,7 @@ export default function TaskCard({
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 placeholder="Not ekle…"
-                className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500"
+                className="flex-1 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500"
                 onKeyDown={(e) => e.key === "Enter" && noteText.trim() && run(async () => { await addNote(task.id, noteText.trim()); setNoteText(""); })}
               />
               <Button variant="ghost" disabled={!noteText.trim()} onClick={() => run(async () => { await addNote(task.id, noteText.trim()); setNoteText(""); })}>Not +</Button>
@@ -159,8 +159,8 @@ export default function TaskCard({
               
               {showLinkInput && (
                 <>
-                  <input value={matName} onChange={(e) => setMatName(e.target.value)} placeholder="ad" className="w-24 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500" />
-                  <input value={matUrl} onChange={(e) => setMatUrl(e.target.value)} placeholder="https://…" className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500" />
+                  <input value={matName} onChange={(e) => setMatName(e.target.value)} placeholder="ad" className="w-24 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500" />
+                  <input value={matUrl} onChange={(e) => setMatUrl(e.target.value)} placeholder="https://…" className="flex-1 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500" />
                   <Button variant="ghost" disabled={!matName.trim() || !matUrl.trim()} onClick={() => run(async () => { await addMaterial(task.id, { kind: "link", name: matName.trim(), source: matUrl.trim() }); setMatName(""); setMatUrl(""); setShowLinkInput(false); })}>Ekle</Button>
                 </>
               )}
@@ -187,7 +187,7 @@ export default function TaskCard({
                   value={newSubtaskTitle}
                   onChange={(e) => setNewSubtaskTitle(e.target.value)}
                   placeholder="Alt görev başlığı..."
-                  className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500"
+                  className="flex-1 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && newSubtaskTitle.trim()) {
                       import("../api").then(({ createTask }) => {

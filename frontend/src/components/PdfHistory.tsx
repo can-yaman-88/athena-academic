@@ -22,7 +22,7 @@ export default function PdfHistory({ jobs }: { jobs: PdfJob[] }) {
       {jobs.map((j) => (
         <li
           key={j.id}
-          className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-3"
+          className="rounded-lg border border-line bg-surface-2/50 p-3"
         >
           <div className="flex items-start justify-between gap-2">
             <span className="min-w-0 truncate text-sm text-zinc-100" title={j.filename}>
@@ -49,7 +49,7 @@ export default function PdfHistory({ jobs }: { jobs: PdfJob[] }) {
                     href={artifactUrl(j.id, a)}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-300 hover:border-emerald-500 hover:text-emerald-300"
+                    className="rounded border border-line-strong px-2 py-0.5 text-xs text-zinc-300 hover:border-emerald-500 hover:text-emerald-300"
                     title={name}
                   >
                     {ext}

@@ -14,7 +14,7 @@ import json
 import logging
 import os
 from contextlib import asynccontextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, AsyncIterator, Optional
 
@@ -56,7 +56,7 @@ from uuid import uuid4
 from tools.agentic_tools import calculate_cognitive_allowance
 from tools.agentic_tools.load_balancer import evaluate_load
 from tools.pdf_engine import process_academic_pdf
-from tools.pdf_engine.automation import UsageTracker, build_engine_config
+from tools.pdf_engine.automation import AIClient, UsageTracker, build_engine_config
 from tools.pdf_engine.wrapper import _extract_markdown
 
 logging.basicConfig(level=logging.INFO)
@@ -113,9 +113,28 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             settings.openrouter_api_key_env,
         )
 
+    # Background Runalyze auto-sync. The loop re-reads the token each cycle, so a
+    # token added later (without a restart) still activates it.
+    if _read_runalyze_token():
+        logger.info(
+            "Runalyze auto-sync enabled (every %d min)",
+            settings.runalyze_sync_interval_min,
+        )
+    else:
+        logger.info(
+            "%s not set; Runalyze auto-sync idle until a token is provided",
+            settings.runalyze_token_env,
+        )
+    app.state.runalyze_task = asyncio.create_task(_runalyze_sync_loop(app))
+
     try:
         yield
     finally:
+        app.state.runalyze_task.cancel()
+        try:
+            await app.state.runalyze_task
+        except asyncio.CancelledError:
+            pass
         await sqlite.close()
 
 
@@ -799,6 +818,185 @@ async def upload_workouts(
     return {"imported": len(created), "workouts": created}
 
 
+def _read_runalyze_token() -> Optional[str]:
+    """Read the Runalyze personal-API token from the env, falling back to .env.
+
+    In Docker the token arrives via the ``environment:`` block; the ``.env``
+    fallback covers bare ``uvicorn`` runs where python-dotenv isn't installed.
+    """
+    token = os.environ.get(settings.runalyze_token_env)
+    if token and token.strip():
+        return token.strip()
+    env_file = settings.base_dir / ".env"
+    if env_file.exists():
+        prefix = f"{settings.runalyze_token_env}="
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            if line.startswith(prefix):
+                return line.split("=", 1)[1].strip().strip('"').strip("'") or None
+    return None
+
+
+def _runalyze_activity_to_load(act: dict[str, Any]) -> Optional[PhysicalLoad]:
+    """Map one Runalyze activity dict to a completed ``PhysicalLoad`` (or None).
+
+    The Runalyze Personal API returns activities as a flat JSON list. Relevant
+    fields: ``date_time`` (ISO; NOT ``time``), ``duration``/``elapsed_time``
+    (seconds), ``distance`` (km), ``hr_avg``, ``rpe`` (0 when unset), ``trimp``,
+    ``title``, and ``sport``/``type`` objects each carrying a ``name``.
+    """
+    act_id = act.get("id")
+    date_raw = act.get("date_time") or act.get("time")
+    if not act_id or not date_raw:
+        return None
+    try:
+        day = date.fromisoformat(str(date_raw).split("T")[0])
+    except ValueError:
+        return None
+
+    seconds = act.get("duration") or act.get("elapsed_time") or 0
+    duration_min = max(1, round(seconds / 60))
+
+    rpe = act.get("rpe")
+    if not rpe:
+        trimp = act.get("trimp") or act.get("fit_trimp") or 0
+        rpe = int(trimp / 15) if trimp else 5
+    rpe = max(1, min(10, int(rpe)))
+
+    sport = act.get("sport") if isinstance(act.get("sport"), dict) else {}
+    typ = act.get("type") if isinstance(act.get("type"), dict) else {}
+    title = act.get("title") or sport.get("name") or typ.get("name") or "Runalyze"
+
+    distance = act.get("distance")
+    distance_km = float(distance) if distance else None
+    hr_avg = act.get("hr_avg")
+    avg_hr = int(hr_avg) if hr_avg else None
+
+    pace: Optional[str] = None
+    avg_speed_kmh: Optional[float] = None
+    minutes = seconds / 60 if seconds else float(duration_min)
+    if distance_km and distance_km > 0 and minutes > 0:
+        avg_speed_kmh = round(distance_km / (minutes / 60), 2)
+        pace_min = minutes / distance_km
+        m = int(pace_min)
+        s = int(round((pace_min - m) * 60))
+        if s == 60:
+            m, s = m + 1, 0
+        pace = f"{m}:{s:02d}"
+
+    return PhysicalLoad(
+        id=f"runalyze_{act_id}",
+        date=day,
+        duration_minutes=duration_min,
+        rpe_score=rpe,
+        status=WorkoutStatus.COMPLETED,
+        title=title,
+        distance_km=distance_km,
+        pace=pace,
+        avg_speed_kmh=avg_speed_kmh,
+        avg_hr=avg_hr,
+    )
+
+
+async def _sync_runalyze_activities(db: SQLiteManager, token: str) -> int:
+    """Pull recent Runalyze activities and upsert them as completed workouts.
+
+    Pages through ``/api/v1/activity?page=N`` (newest first) until an empty page,
+    the page cap, or activities older than the lookback window. ``create_physical_load``
+    is an INSERT-OR-REPLACE, so re-syncing refreshes edited activities. Returns the
+    number of workouts created or updated. Raises ``httpx`` errors to the caller.
+    """
+    import httpx
+
+    cutoff = date.today() - timedelta(days=settings.runalyze_sync_lookback_days)
+    base_url = "https://runalyze.com/api/v1/activity"
+    headers = {"token": token, "Accept": "application/json"}
+    synced = 0
+
+    # Runalyze can be slow; use a generous timeout instead of httpx's 5s default.
+    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
+        for page in range(1, settings.runalyze_sync_max_pages + 1):
+            resp = await client.get(base_url, headers=headers, params={"page": page})
+            resp.raise_for_status()
+            data = resp.json()
+            activities = data if isinstance(data, list) else data.get("data", [])
+            if not activities:
+                break
+
+            reached_cutoff = False
+            for act in activities:
+                load = _runalyze_activity_to_load(act)
+                if load is None:
+                    continue
+                if load.date < cutoff:
+                    reached_cutoff = True
+                    continue
+                await db.create_physical_load(load)  # INSERT OR REPLACE = upsert
+                synced += 1
+
+            if reached_cutoff:
+                break
+
+    return synced
+
+
+async def _runalyze_sync_loop(app: FastAPI) -> None:
+    """Background loop: pull Runalyze activities on startup, then every interval.
+
+    Re-reads the token each cycle (so it can be added without a restart) and
+    swallows per-cycle errors so a transient failure never kills the loop.
+    """
+    interval = settings.runalyze_sync_interval_min * 60
+    db: SQLiteManager = app.state.sqlite
+    while True:
+        token = _read_runalyze_token()
+        if token:
+            try:
+                n = await _sync_runalyze_activities(db, token)
+                if n:
+                    logger.info("Runalyze auto-sync: %d workout(s) imported/updated", n)
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001 - never let the loop die
+                logger.warning("Runalyze auto-sync failed; retrying next cycle", exc_info=True)
+        await asyncio.sleep(interval)
+
+
+@app.post("/workouts/sync/runalyze")
+async def sync_runalyze(request: Request) -> dict[str, Any]:
+    """Fetch recent activities from Runalyze and upsert them as completed workouts."""
+    import httpx
+
+    db: SQLiteManager = request.app.state.sqlite
+    token = _read_runalyze_token()
+    if not token:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{settings.runalyze_token_env} bulunamadı. Lütfen .env dosyanıza ekleyin.",
+        )
+
+    try:
+        imported = await _sync_runalyze_activities(db, token)
+    except httpx.TimeoutException:
+        logger.warning("Runalyze API request timed out")
+        raise HTTPException(
+            status_code=504,
+            detail="Runalyze API zaman aşımına uğradı. Lütfen biraz sonra tekrar deneyin.",
+        )
+    except httpx.HTTPStatusError as exc:
+        logger.warning("Runalyze API returned %s", exc.response.status_code)
+        detail = (
+            "Token geçersiz veya yetkisiz."
+            if exc.response.status_code in (401, 403)
+            else f"HTTP {exc.response.status_code}"
+        )
+        raise HTTPException(status_code=502, detail=f"Runalyze API Hatası: {detail}")
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Runalyze API request failed")
+        raise HTTPException(status_code=502, detail=f"Runalyze API Hatası: {exc}")
+
+    return {"imported": imported}
+
+
 @app.patch("/workouts/{load_id}")
 async def update_workout(request: Request, load_id: str, body: WorkoutUpdateRequest) -> dict[str, Any]:
     db: SQLiteManager = request.app.state.sqlite
@@ -880,7 +1078,7 @@ async def logs_stream(request: Request) -> StreamingResponse:
 # --------------------------------------------------------------------------- #
 # Journals
 # --------------------------------------------------------------------------- #
-from core.schemas import Journal, JournalItem, JournalItemType
+from core.schemas import Journal, JournalItem
 
 @app.get("/journals")
 async def get_journals(request: Request) -> list[dict[str, Any]]:
@@ -926,7 +1124,7 @@ async def delete_journal_item(request: Request, item_id: str) -> dict[str, str]:
 @app.post("/journals/ai-analyze")
 async def analyze_journals(request: Request, body: JournalAnalyzeRequest) -> dict[str, Any]:
     db: SQLiteManager = request.app.state.sqlite
-    from core.journal_analyzer import analyze_journal, JournalItemPayload
+    from core.journal_analyzer import analyze_journal
     from core.usage_callback import AgentUsageCallback
 
     extracted_items_count = 0

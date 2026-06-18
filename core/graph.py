@@ -624,6 +624,7 @@ async def workout_tool_node(
     user_text = _last_human_message(state["messages"])
     command, remainder = parse_command(user_text)
     working_text = remainder if command else user_text
+    hints = COMMANDS[command.name].hints if command else {}
 
     if sqlite_manager is None or workout_extractor_llm is None:
         return {"messages": [AIMessage(content="[mock] workout tool not wired.")],

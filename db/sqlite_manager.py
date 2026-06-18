@@ -520,8 +520,16 @@ class SQLiteManager:
 
     async def delete_task(self, task_id: str) -> None:
         await self.get_task(task_id)  # existence check
-        await self._write("DELETE FROM tasks WHERE id = ?", (task_id,))
+        
+        # Fetch subtasks to evict them from the in-memory cache
+        subtasks = await self._fetchall("SELECT id FROM tasks WHERE parent_id = ?", (task_id,))
+        subtask_ids = [row["id"] for row in subtasks]
+        
+        await self._write("DELETE FROM tasks WHERE id = ? OR parent_id = ?", (task_id, task_id))
+        
         self._pending_tasks.pop(task_id, None)
+        for sid in subtask_ids:
+            self._pending_tasks.pop(sid, None)
 
     # ------------------------------------------------------------------ #
     # Idempotency queue

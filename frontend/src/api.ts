@@ -238,18 +238,20 @@ export const completeWorkout = (id: string) =>
 export const deleteWorkout = (id: string) =>
   jsend<{ status: string }>(`/workouts/${id}`, "DELETE");
 
-export async function uploadWorkoutFile(
-  file: File
-): Promise<{ imported: number; workouts: Workout[] }> {
-  const form = new FormData();
-  form.append("file", file);
-  const res = await fetch(`${API_URL}/workouts/upload`, {
+export const uploadWorkoutFile = (file: File) => {
+  const data = new FormData();
+  data.append("file", file);
+  return fetch(`${API_URL}/workouts/upload`, {
     method: "POST",
-    body: form,
-  });
-  if (!res.ok) throw new Error(`workout upload ${res.status}`);
-  return res.json();
-}
+    body: data,
+  }).then((r) => {
+    if (!r.ok) throw new Error("upload failed");
+    return r.json();
+  }) as Promise<{ imported: number }>;
+};
+
+export const syncRunalyze = () => 
+  jsend<{ imported: number }>("/workouts/sync/runalyze", "POST");
 
 // --------------------------------------------------------------------------- //
 // PDF jobs + usage

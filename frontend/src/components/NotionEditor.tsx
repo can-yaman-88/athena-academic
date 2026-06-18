@@ -136,12 +136,12 @@ export default function NotionEditor({
   ];
 
   return (
-    <div className="relative h-full w-full bg-zinc-950 text-zinc-200" ref={editorRef}>
+    <div className="relative h-full w-full bg-surface-2 text-zinc-200" ref={editorRef}>
       <EditorContent editor={editor} className="h-full cursor-text p-6" />
 
       {slashMenuOpen && (
         <div
-          className="absolute z-50 w-64 rounded-xl border border-zinc-700 bg-zinc-900 p-2 shadow-2xl"
+          className="absolute z-50 w-64 rounded-xl border border-line-strong bg-elevated p-2 shadow-2xl"
           style={{ top: slashCoords.top, left: slashCoords.left }}
         >
           <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
@@ -154,7 +154,7 @@ export default function NotionEditor({
                 onClick={() => insertCommand(cmd.action)}
                 className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
               >
-                <div className="flex h-6 w-6 items-center justify-center rounded border border-zinc-700 bg-zinc-800 text-xs text-zinc-400">
+                <div className="flex h-6 w-6 items-center justify-center rounded border border-line-strong bg-zinc-800 text-xs text-zinc-400">
                   {cmd.icon}
                 </div>
                 {cmd.title}

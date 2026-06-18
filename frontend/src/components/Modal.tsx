@@ -34,10 +34,10 @@ export default function Modal({
       onClick={onClose}
     >
       <div
-        className={`flex max-h-[85vh] w-full ${widthClass} flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-card-hover [animation:modal-pop_180ms_ease-out]`}
+        className={`flex max-h-[85vh] w-full ${widthClass} flex-col overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-card-hover [animation:modal-pop_180ms_ease-out]`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3">
           <h2 className="text-sm font-semibold tracking-wide text-zinc-200">{title}</h2>
           <button
             onClick={onClose}

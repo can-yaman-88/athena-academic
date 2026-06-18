@@ -4,7 +4,7 @@ import { Button } from "../ui";
 import TaskCard from "./TaskCard";
 
 const inputCls =
-  "rounded-lg border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-500";
+  "rounded-lg border border-line-strong bg-surface-2 px-2.5 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-500";
 
 function defaultDeadline(): string {
   const d = new Date();
@@ -76,7 +76,7 @@ export default function TaskManager() {
   return (
     <div className="flex h-full flex-col gap-3">
       {/* create form */}
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/50 p-3 sm:grid-cols-12">
+      <div className="grid grid-cols-2 gap-2 rounded-lg border border-line bg-surface-2/50 p-3 sm:grid-cols-12">
         <input className={`${inputCls} col-span-2 sm:col-span-3`} placeholder="Başlık" value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           onKeyDown={(e) => e.key === "Enter" && void add()} />

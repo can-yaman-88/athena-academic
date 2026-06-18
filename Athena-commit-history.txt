@@ -1,3 +1,57 @@
+20.47
+1. Runalyze entegrasyonunu otomatik hale getir.
+1.1 Elle senkronizasyon yaptığımda 0 aktivite senkronize edildi ama bugün 3 tane antrenman yapmıştım. Bu sorunu da çöz.
+2. Genel olarak koddaki hataları düzelt.
+3. Sana verilen ui ux pro skili ile tüm projedeki tasarımı değiştirmeni istiyorum. Bu projeye en uygun görünümü seç, hazırla, uygula.
+
+
+
+
+20.09
+Strava veya runalyze entegrasyonu kurmamız gerekli, antrenman planlarımı elle ekleyebilrim ama antrenmanlarımın hepsini elle eklemem mümkün değil. Hem ben birden fazla türde antrenman yapıyorum. Bu yüzden elle antrenman ekleme kısmını kaldıralım, Dosya ile antrenman ekleme kısmı kalsın.
+Sayfaya bir de senkronize et butonu ekleyelim. Hangisini bağlamamamızın daha iyi olacağını senin seçmeni istiyorum. Bu konu hakkında iki seçeneğin artı ve eksi yönlerini bana anlat ve ben de karar vereceğim.
+
+
+
+
+19.57
+Görevi silmeme rağmen günüm görünümündeki bekleyen kısmında alt görevler kalmaya devam etti.
+
+
+
+
+17.06.2026
+
+Güzel bir iş çıkardın.
+
+<<< Günlük >>>
+
+Bu siteyi ek olarak bir günlük ve anlık fikirlerin kaydedilme yeri olarak da kullanmak istiyorum. Bu yüzden de yeni ve 5. sayfayı ekleyeceğiz: Fikir Defteri.
+1. Günüm sayfasında bir günlük/fikir ekle butonu olacak. Bu butonla beraber o güne ait bir günlük oluşacak. Bu günlük girme yeri notiondaki gibi ortada yüzen bir sayfa açacak şekilde çalışacak (center peek).
+Aynı notion sayfa düzeni gibi en üstte başlık olacak. Görseli ekte koyacağım. Sonra altında yazacağım alan.
+Bu alan bir md motoru içermeli. Benim başka bir yerden kopyaladığım md formatını otomatik olarak şekillendirmeli.
+Ek olarak notiondaki / işaretiyle komutlar özelliği burada da olmalı. Kesin eklenecek özellikleri aşağıda sıralıyorum:
+    1. Bullet list
+    2. Numbered list
+    3. Toggle list
+    4. Heading 1, 2, 3
+    5. Toogle heading 1, 2, 3
+Bunlara ek olarak yine 7 tane özellik öner ben aralarından seçeceğim.
+2. Ayrı olarak bir Fikir Defteri sayfası da olacak. Bu sayfa 2'ye bölünmüş şekilde olacak. Sol tarafta yazdığım günlükleri görebileceğim, yönetebileceğim, düzenleyebileceğim ve günm sayfasına benzer bir şekilde center peekde açılan bir bölüm olacak. Bu tarafa bir de yapay zekaya gönder butonu eklemeni istiyorum. Yapay zeka bu yazılanları okuyacak, anlayacak, analiz edecek ve bunun içinde kendime görev atamışsam bu görevi oluşturacak, bir söz vermişsem bu sözü kaydedecek bu bir hedefse eğer (hedef) yazarak ekleyecek, eleştiri sunmuşsam da bu eleştiriyi kaydedecek, eğer bir şey fark edip bir şey deneyeceğim dersem de bunu fikirler bölümüne ekleyecek. Bunları yapabilmesi için de sayfanın sağ tarafını kullanacağız.
+Bu sağ tarafta da notion'ın gallery görünümünü kullanacağız. Bölümler şunlar olacak:
+    - Fikirler
+    - Görevler
+    - Sözler
+    - Eleştiriler
+İlk versiyonunu oluştur, daha fazla şey ekleriz.
+
+<<< Loglar >>>
+
+Pdf otomasyonu sayfasındaki logları artırmanı istiyorum, bu loglar benim yaptığım her hareketi içermeli, bir sayfa ekledim, bir api gönderdim, bir sayfa sildim, bunun gibi şeyleri göstermeli. Logları artır.
+
+
+
+
 20.22
 Harika, tüm özellikler müthiş çalışıyor. Müthişsin. Şimdi yeni özellikler ekleme zamanı.
 

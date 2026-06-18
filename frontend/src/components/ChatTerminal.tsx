@@ -310,9 +310,9 @@ export default function ChatTerminal() {
     : lines;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-zinc-800 bg-black/60 shadow-lg shadow-black/20 relative">
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-line bg-black/60 shadow-lg shadow-black/20 relative">
       {/* HEADER */}
-      <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/50 px-4 py-2.5">
+      <div className="flex items-center justify-between border-b border-line bg-elevated/60 px-4 py-2.5">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setShowHistory(!showHistory)}
@@ -329,7 +329,7 @@ export default function ChatTerminal() {
           <select 
             value={activePersona} 
             onChange={(e) => setActivePersona(e.target.value)}
-            className="bg-zinc-800 text-zinc-300 text-xs rounded border border-zinc-700 px-2 py-1 outline-none"
+            className="bg-zinc-800 text-zinc-300 text-xs rounded border border-line-strong px-2 py-1 outline-none"
             title="Sistem Promptu Seçici"
           >
             {personasData.map(p => (
@@ -344,14 +344,14 @@ export default function ChatTerminal() {
 
       {/* SEARCH BAR */}
       {showSearch && (
-        <div className="border-b border-zinc-800 bg-zinc-950 p-2 flex gap-2">
+        <div className="border-b border-line bg-surface-2 p-2 flex gap-2">
           <input
             autoFocus
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Mesajlarda ara..."
-            className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-200 outline-none focus:border-emerald-500"
+            className="flex-1 rounded border border-line-strong bg-elevated px-2 py-1 text-sm text-zinc-200 outline-none focus:border-emerald-500"
           />
           <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} className="text-zinc-500 hover:text-zinc-300 px-2">Kapat</button>
         </div>
@@ -359,8 +359,8 @@ export default function ChatTerminal() {
 
       {/* HISTORY DRAWER */}
       {showHistory && (
-        <div className="absolute top-[45px] left-0 bottom-0 w-64 bg-zinc-950 border-r border-zinc-800 z-10 flex flex-col">
-          <div className="p-3 border-b border-zinc-800 flex justify-between items-center">
+        <div className="absolute top-[45px] left-0 bottom-0 w-64 bg-surface-2 border-r border-line z-10 flex flex-col">
+          <div className="p-3 border-b border-line flex justify-between items-center">
             <span className="text-sm font-medium text-zinc-200">Sohbetler</span>
             <button onClick={() => setShowHistory(false)} className="text-zinc-500 hover:text-zinc-300">×</button>
           </div>
@@ -388,13 +388,13 @@ export default function ChatTerminal() {
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 font-mono text-sm">
         {filteredLines.map((l, i) => (
           <div key={i} className={`group flex flex-col ${l.role === "user" ? "items-end" : "items-start"}`}>
-            <div className={`relative max-w-[85%] rounded-lg px-4 py-2 ${l.role === "user" ? "bg-zinc-800 text-sky-200" : l.role === "agent" ? "bg-zinc-900 text-emerald-200 border border-zinc-800" : "bg-transparent text-zinc-500"}`}>
+            <div className={`relative max-w-[85%] rounded-lg px-4 py-2 ${l.role === "user" ? "bg-zinc-800 text-sky-200" : l.role === "agent" ? "bg-elevated text-emerald-200 border border-line" : "bg-transparent text-zinc-500"}`}>
               {l.role === "system" && <span className="select-none mr-2">#</span>}
               <span className="whitespace-pre-wrap">{l.text}</span>
               
               {/* ACTION BUTTONS (Hover) */}
               {l.role !== "system" && !searchQuery && (
-                <div className={`absolute top-0 flex gap-1 bg-zinc-900 border border-zinc-700 rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-100 ${l.role === "user" ? "-left-16" : "-right-16"}`}>
+                <div className={`absolute top-0 flex gap-1 bg-elevated border border-line-strong rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-100 ${l.role === "user" ? "-left-16" : "-right-16"}`}>
                   <button onClick={() => copyToClipboard(l.text)} className="text-zinc-400 hover:text-zinc-200 px-1" title="Kopyala">📋</button>
                   {l.role === "user" && <button onClick={() => handleEdit(i)} className="text-zinc-400 hover:text-sky-300 px-1" title="Düzenle">✏️</button>}
                   {l.role === "agent" && <button onClick={() => handleRegenerate(i)} className="text-zinc-400 hover:text-emerald-300 px-1" title="Yeniden Üret">🔄</button>}
@@ -408,12 +408,12 @@ export default function ChatTerminal() {
       </div>
 
       {showHint && !isDefaultCmd && (
-        <div className="flex flex-wrap gap-1.5 border-t border-zinc-800 px-3 py-2 text-xs bg-zinc-950">
+        <div className="flex flex-wrap gap-1.5 border-t border-line px-3 py-2 text-xs bg-surface-2">
           {COMMANDS.filter(([c]) => c.startsWith(input.split(" ")[0])).map(([c, d]) => (
             <button
               key={c}
               onClick={() => setInput(c + " ")}
-              className="rounded border border-zinc-700 px-2 py-0.5 text-zinc-400 hover:border-emerald-500 hover:text-emerald-300"
+              className="rounded border border-line-strong px-2 py-0.5 text-zinc-400 hover:border-emerald-500 hover:text-emerald-300"
             >
               {c} <span className="text-zinc-600">{d}</span>
             </button>
@@ -422,7 +422,7 @@ export default function ChatTerminal() {
       )}
 
       {(showMentions || showTags) && mentionOptions.length > 0 && (
-        <div className="flex flex-col gap-1 border-t border-zinc-800 px-3 py-2 text-xs max-h-40 overflow-y-auto bg-zinc-900">
+        <div className="flex flex-col gap-1 border-t border-line px-3 py-2 text-xs max-h-40 overflow-y-auto bg-elevated">
           {mentionOptions.map((opt) => (
             <button
               key={opt.id + opt.type}
@@ -446,7 +446,7 @@ export default function ChatTerminal() {
       )}
 
       {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 border-t border-zinc-800 px-3 py-2 bg-zinc-950">
+        <div className="flex flex-wrap gap-1.5 border-t border-line px-3 py-2 bg-surface-2">
           {attachments.map((a) => (
             <span key={a.id} className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300">
               📎 {a.name}
@@ -456,7 +456,7 @@ export default function ChatTerminal() {
         </div>
       )}
 
-      <div className="flex gap-2 border-t border-zinc-800 p-3 bg-zinc-950/80">
+      <div className="flex gap-2 border-t border-line p-3 bg-surface-2/60">
         <input
           ref={fileRef}
           type="file"
@@ -471,7 +471,7 @@ export default function ChatTerminal() {
         <button
           onClick={() => fileRef.current?.click()}
           title="Dosya ekle (PDF/görüntü/.md/.json)"
-          className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:border-zinc-500 bg-zinc-900"
+          className="rounded-lg border border-line-strong px-3 py-2 text-sm text-zinc-300 hover:border-zinc-500 bg-elevated"
         >
           📎
         </button>
@@ -480,7 +480,7 @@ export default function ChatTerminal() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && void handleSend()}
           placeholder="Mesaj yaz… ('/' ile komutlar, '@' ile bahset)"
-          className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-sm text-zinc-100 outline-none focus:border-emerald-500"
+          className="flex-1 rounded-lg border border-line-strong bg-elevated px-3 py-2 font-mono text-sm text-zinc-100 outline-none focus:border-emerald-500"
         />
         <button
           onClick={() => void handleSend()}

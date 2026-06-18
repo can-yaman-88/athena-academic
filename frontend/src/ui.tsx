@@ -1,5 +1,6 @@
-// Shared UI primitives — keep the dark minimalist zinc/emerald theme consistent
-// across pages while adding a bit more polish (cards, buttons, badges).
+// Shared UI primitives — refined-dark (Linear/Vercel) language: layered elevated
+// surfaces, hairline translucent borders, soft shadows, crisp emerald focus.
+// These carry most of the restyle since every page composes them.
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export function Card({
@@ -17,11 +18,11 @@ export function Card({
 }) {
   return (
     <div
-      className={`flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50 shadow-card transition-shadow duration-200 hover:shadow-card-hover ${className}`}
+      className={`card-elevated flex flex-col overflow-hidden rounded-xl transition-[box-shadow,border-color] duration-200 ${className}`}
     >
       {title !== undefined && (
-        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2.5">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
             {title}
           </h2>
           {right}
@@ -33,27 +34,37 @@ export function Card({
 }
 
 type Variant = "primary" | "ghost" | "danger" | "subtle";
+type Size = "sm" | "md";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-emerald-500/90 text-zinc-950 hover:bg-emerald-400 disabled:opacity-50",
+    "bg-emerald-500 text-zinc-950 shadow-sm hover:bg-emerald-400 hover:shadow-glow disabled:opacity-50",
   ghost:
-    "border border-zinc-700 text-zinc-200 hover:border-zinc-500 hover:bg-zinc-800/50 disabled:opacity-50",
+    "border border-line-strong bg-white/[0.02] text-zinc-200 hover:border-zinc-500 hover:bg-white/[0.05] disabled:opacity-50",
   danger:
-    "border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 disabled:opacity-50",
-  subtle: "text-zinc-400 hover:text-zinc-100 disabled:opacity-50",
+    "border border-rose-500/40 bg-rose-500/5 text-rose-300 hover:bg-rose-500/15 disabled:opacity-50",
+  subtle: "text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-100 disabled:opacity-50",
+};
+
+const sizes: Record<Size, string> = {
+  sm: "px-2.5 py-1 text-xs",
+  md: "px-3.5 py-1.5 text-sm",
 };
 
 export function Button({
   variant = "primary",
+  size = "md",
   className = "",
   children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  size?: Size;
+}) {
   return (
     <button
       {...props}
-      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition active:translate-y-px disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition active:translate-y-px disabled:cursor-not-allowed disabled:active:translate-y-0 ${sizes[size]} ${variants[variant]} ${className}`}
     >
       {children}
     </button>
@@ -61,11 +72,11 @@ export function Button({
 }
 
 const tones: Record<string, string> = {
-  emerald: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
-  amber: "border-amber-500/40 bg-amber-500/10 text-amber-300",
-  rose: "border-rose-500/40 bg-rose-500/10 text-rose-300",
-  sky: "border-sky-500/40 bg-sky-500/10 text-sky-300",
-  zinc: "border-zinc-700 bg-zinc-800/50 text-zinc-300",
+  emerald: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+  amber: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+  rose: "border-rose-500/30 bg-rose-500/10 text-rose-300",
+  sky: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+  zinc: "border-line-strong bg-white/[0.04] text-zinc-300",
 };
 
 export function Badge({
@@ -77,7 +88,7 @@ export function Badge({
 }) {
   return (
     <span
-      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${tones[tone]}`}
+      className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${tones[tone]}`}
     >
       {children}
     </span>
@@ -103,9 +114,13 @@ export function Stat({
     zinc: "text-zinc-100",
   };
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-      <div className="text-[11px] uppercase tracking-wider text-zinc-500">{label}</div>
-      <div className={`mt-1 text-xl font-semibold ${accent[tone]}`}>{value}</div>
+    <div className="rounded-xl border border-line bg-surface-2/60 p-3.5 transition-colors hover:border-line-strong">
+      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-500">
+        {label}
+      </div>
+      <div className={`mt-1.5 text-2xl font-semibold tracking-tight ${accent[tone]}`}>
+        {value}
+      </div>
       {sub && <div className="mt-0.5 text-xs text-zinc-500">{sub}</div>}
     </div>
   );
