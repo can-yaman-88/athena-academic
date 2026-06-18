@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { streamChat, uploadChatFile, type ChatAttachment } from "../api";
+import { streamChat, uploadChatFile, getModels, type ChatAttachment } from "../api";
 import personasData from "../data/personas.json";
 
 // Render assistant replies as markdown (headings, lists, code, tables, links)
@@ -115,8 +115,13 @@ export default function ChatTerminal() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    getModels().then(setAvailableModels).catch(() => {});
+  }, []);
 
   // Extras State
   const [searchQuery, setSearchQuery] = useState("");
@@ -162,12 +167,7 @@ export default function ChatTerminal() {
       const q = mentionMatch[1].toLowerCase();
       import("../api").then(({ getTasks, getWorkouts }) => {
         Promise.all([getTasks(), getWorkouts()]).then(([tasks, workouts]) => {
-          const models = [
-            { id: "haiku", type: "model", label: "haiku" },
-            { id: "opus", type: "model", label: "opus" },
-            { id: "gemini-flash", type: "model", label: "gemini-flash" },
-            { id: "gemini-pro", type: "model", label: "gemini-pro" },
-          ];
+          const models = availableModels.map(m => ({ id: m, type: "model", label: m }));
           const tOptions = tasks.filter(t => t.title.toLowerCase().includes(q)).map(t => ({ id: t.id, type: "görev", label: t.title }));
           const wOptions = workouts.filter(w => (w.title || "").toLowerCase().includes(q) || w.date.includes(q)).map(w => ({ id: w.id, type: "antrenman", label: w.title || w.date }));
           const mOptions = models.filter(m => m.label.includes(q));
@@ -183,7 +183,7 @@ export default function ChatTerminal() {
       }
       setMentionOptions(opts);
     }
-  }, [input, showMentions, showTags]);
+  }, [input, showMentions, showTags, availableModels]);
 
   async function handleSend(customMessage?: string, historyOverride?: Line[]) {
     let message = customMessage !== undefined ? customMessage : input.trim();
@@ -211,8 +211,8 @@ export default function ChatTerminal() {
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }));
 
     let modelOverride = localStorage.getItem("defaultModel") || undefined;
-    const modelMatch = message.match(/@(haiku|opus|gemini-flash|gemini-pro)\b/);
-    if (modelMatch) {
+    const modelMatch = message.match(/@([\w.-]+)\b/);
+    if (modelMatch && availableModels.includes(modelMatch[1])) {
       modelOverride = modelMatch[1];
     }
 

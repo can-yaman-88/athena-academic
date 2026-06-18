@@ -136,6 +136,9 @@ async function jsend<T>(path: string, method: string, body?: unknown): Promise<T
 // --------------------------------------------------------------------------- //
 // Dashboard
 // --------------------------------------------------------------------------- //
+export const getModels = () => jget<{ models: string[] }>("/models").then((d) => d.models);
+
+// --------------------------------------------------------------------------- //
 export const getDashboard = () => jget<DashboardData>("/dashboard_data");
 
 // --------------------------------------------------------------------------- //

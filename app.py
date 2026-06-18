@@ -244,6 +244,12 @@ def _strip_html(text: str) -> str:
 # --------------------------------------------------------------------------- #
 # Health + chat
 # --------------------------------------------------------------------------- #
+@app.get("/models")
+async def list_models() -> dict[str, list[str]]:
+    """Return the available model keys from settings."""
+    return {"models": list(settings.available_models.keys())}
+
+
 @app.get("/health")
 async def health(request: Request) -> dict[str, Any]:
     """Liveness probe; reports whether the agent graph is available."""

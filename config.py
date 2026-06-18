@@ -58,8 +58,8 @@ class Settings(BaseModel):
     openrouter_api_key_env: str = Field(default="OPENROUTER_API_KEY")
 
     # Default model per graph node. Slugs are OpenRouter model identifiers.
-    router_model: str = Field(default="google/gemini-3.5-flash")
-    chat_model: str = Field(default="google/gemini-3.1-pro-preview")
+    router_model: str = Field(default="qwen/qwen3.7-max")
+    chat_model: str = Field(default="qwen/qwen3.7-max")
     router_max_tokens: int = Field(default=1024, gt=0)
     chat_max_tokens: int = Field(default=2048, gt=0)
 
@@ -70,6 +70,11 @@ class Settings(BaseModel):
             "opus": "anthropic/claude-opus-4.8",
             "gemini-flash": "google/gemini-3.5-flash",
             "gemini-pro": "google/gemini-3.1-pro-preview",
+            "kimi2.7": "moonshotai/kimi-k2.7-code",
+            "qwen3.7m": "qwen/qwen3.7-max",
+            "deepseek": "deepseek/deepseek-v4-pro",
+            "zai": "z-ai/glm-5.2",
+            "gpt5.5": "openai/gpt-5.5"
         }
     )
 
@@ -84,9 +89,9 @@ class Settings(BaseModel):
 
     # OpenRouter model slugs per pipeline stage. Transcriber must be vision-capable
     # for the scanned-PDF (image) fallback.
-    pdf_transcriber_model: str = Field(default="google/gemini-3.1-pro-preview")
-    pdf_exam_model: str = Field(default="anthropic/claude-opus-4.8")
-    pdf_flashcard_model: str = Field(default="anthropic/claude-haiku-4.5")
+    pdf_transcriber_model: str = Field(default="openai/gpt-5.5")
+    pdf_exam_model: str = Field(default="openai/gpt-5.5")
+    pdf_flashcard_model: str = Field(default="z-ai/glm-5.2")
     pdf_validator_model: str = Field(default="google/gemini-3.1-pro-preview")
 
     # LaTeX compilation. Engines tried in order; first available wins.
@@ -137,6 +142,11 @@ class Settings(BaseModel):
             "anthropic/claude-haiku-4.5": (1.0, 5.0),
             "google/gemini-3.5-flash": (0.30, 2.50),
             "google/gemini-3.1-pro-preview": (1.25, 5.0),
+            "moonshotai/kimi-k2.7-code": (0.74, 3.50),
+            "qwen/qwen3.7-max": (1.25, 3.75),
+            "deepseek/deepseek-v4-pro": (0.435, 0.87),
+            "z-ai/glm-5.2": (1.40, 4.40),
+            "openai/gpt-5.5": (5.0, 30.0)
         }
     )
     usage_csv_path: Path = Field(default=_BASE_DIR / "data" / "usage.csv")
@@ -158,7 +168,7 @@ class Settings(BaseModel):
     uploads_dir: Path = Field(default=_BASE_DIR / "data" / "uploads")
 
     # High-capacity model used for note analysis + subtask generation.
-    notes_model: str = Field(default="anthropic/claude-opus-4.8")
+    notes_model: str = Field(default="openai/gpt-5.5")
     notes_model_max_tokens: int = Field(default=4096, gt=0)
 
     # --- Runalyze integration ---------------------------------------------

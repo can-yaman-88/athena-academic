@@ -100,13 +100,27 @@ def _make_llm(
     return ChatOpenAI(**kwargs)
 
 
+def _make_structured_llm(llm: Any, schema: type) -> Any:
+    """Bind a Pydantic schema as a tool with tool_choice='auto'.
+
+    LangChain's with_structured_output(method="function_calling") forces
+    tool_choice to the schema name (object form), which Qwen/Alibaba thinking
+    models reject with a 400. Using tool_choice='auto' avoids the restriction
+    while still directing the model toward the schema tool.
+    """
+    from langchain_core.output_parsers.openai_tools import PydanticToolsParser
+
+    bound = llm.bind_tools([schema], tool_choice="auto")
+    return bound | PydanticToolsParser(tools=[schema], first_tool_only=True)
+
+
 def _default_router_llm(callbacks: Optional[list] = None) -> Any:
     """Lightweight, deterministic router bound to the RouteDecision schema."""
     llm = _make_llm(
         settings.router_model, settings.router_max_tokens, temperature=0,
         callbacks=callbacks,
     )
-    return llm.with_structured_output(RouteDecision, method="function_calling")
+    return _make_structured_llm(llm, RouteDecision)
 
 
 def _default_chat_llm(callbacks: Optional[list] = None) -> Any:
@@ -122,7 +136,7 @@ def _default_task_extractor_llm(callbacks: Optional[list] = None) -> Any:
         settings.router_model, settings.router_max_tokens, temperature=0,
         callbacks=callbacks,
     )
-    return llm.with_structured_output(TaskExtractionList, method="function_calling")
+    return _make_structured_llm(llm, TaskExtractionList)
 
 
 def _default_workout_extractor_llm(callbacks: Optional[list] = None) -> Any:
@@ -131,7 +145,7 @@ def _default_workout_extractor_llm(callbacks: Optional[list] = None) -> Any:
         settings.router_model, settings.router_max_tokens, temperature=0,
         callbacks=callbacks,
     )
-    return llm.with_structured_output(WorkoutPlan, method="function_calling")
+    return _make_structured_llm(llm, WorkoutPlan)
 
 
 # --------------------------------------------------------------------------- #
@@ -731,9 +745,7 @@ def build_athena_graph(
                 )
                 from core.subtasks import SubtaskPlan
 
-                subtask_llm = sub_base.with_structured_output(
-                    SubtaskPlan, method="function_calling"
-                )
+                subtask_llm = _make_structured_llm(sub_base, SubtaskPlan)
             except Exception:  # pragma: no cover - missing key/package
                 subtask_llm = None
 
