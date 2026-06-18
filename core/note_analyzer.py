@@ -57,12 +57,12 @@ nothing for it. Never invent task ids. Return only the structured fields.\
 
 
 def _default_llm(callbacks: Optional[list] = None) -> Any:
-    from core.graph import _make_llm
+    from core.graph import _make_llm, _make_structured_llm
 
     llm = _make_llm(
         settings.notes_model, settings.notes_model_max_tokens, callbacks=callbacks
     )
-    return llm.with_structured_output(NoteAnalysis, method="function_calling")
+    return _make_structured_llm(llm, NoteAnalysis)
 
 
 async def analyze_notes(

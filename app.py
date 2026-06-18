@@ -635,7 +635,7 @@ async def generate_subtasks(request: Request, task_id: str) -> dict[str, Any]:
     """Use the high-capacity model to break an academic task into subtasks."""
     db: SQLiteManager = request.app.state.sqlite
     parent = await _get_task_or_404(db, task_id)
-    from core.graph import _generate_subtasks, _make_llm
+    from core.graph import _generate_subtasks, _make_llm, _make_structured_llm
     from core.subtasks import SubtaskPlan
 
     try:
@@ -643,7 +643,7 @@ async def generate_subtasks(request: Request, task_id: str) -> dict[str, Any]:
             settings.notes_model, settings.notes_model_max_tokens,
             callbacks=[AgentUsageCallback(request.app.state.usage)],
         )
-        sub_llm = base.with_structured_output(SubtaskPlan, method="function_calling")
+        sub_llm = _make_structured_llm(base, SubtaskPlan)
     except Exception as exc:  # noqa: BLE001 - no key/package
         raise HTTPException(status_code=503, detail=f"Subtask model unavailable: {exc}")
 
