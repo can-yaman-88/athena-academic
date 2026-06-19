@@ -110,15 +110,15 @@ class Task(_StrictModel):
 
     id: str = Field(default_factory=_new_id, description="UUID4 primary key.")
     title: str = Field(min_length=1, description="Human-readable task title.")
-    deadline: datetime = Field(description="When the task is due.")
+    deadline: Optional[datetime] = Field(default=None, description="When the task is due. Can be null.")
     discipline: str = Field(
         min_length=1, description="Subject/field the task belongs to."
     )
     status: TaskStatus = Field(
         default=TaskStatus.PENDING, description="Current lifecycle state."
     )
-    estimated_hours: float = Field(
-        gt=0, description="Estimated effort in hours; must be positive."
+    estimated_hours: Optional[float] = Field(
+        default=None, gt=0, description="Estimated effort in hours; must be positive. Can be null."
     )
     category: TaskCategory = Field(
         default=TaskCategory.DAILY, description="academic | daily."
@@ -140,6 +140,21 @@ class Task(_StrictModel):
     )
     tags: list[str] = Field(
         default_factory=list, description="Tags associated with the task."
+    )
+    is_spaced_repetition: bool = Field(
+        default=False, description="Is this task part of a spaced repetition cycle?"
+    )
+    streak: int = Field(
+        default=0, ge=0, description="Number of consecutive successful recalls."
+    )
+    ease_factor: float = Field(
+        default=2.5, ge=1.3, description="SM-2 ease factor."
+    )
+    interval_days: int = Field(
+        default=0, ge=0, description="Current repetition interval in days."
+    )
+    original_task_id: Optional[str] = Field(
+        default=None, description="ID of the original task this repetition belongs to."
     )
 
 
@@ -253,6 +268,44 @@ class Journal(_StrictModel):
     processed: bool = Field(default=False, description="Has it been analyzed by AI?")
 
 
+class Idea(_StrictModel):
+    """A free-form idea/note the user keeps and edits (no AI processing).
+
+    Like a task it can carry links and uploaded files (materials); the body is
+    rich-text HTML written in the Notion-style editor. Ideas are @-mentionable in
+    chat so their content can be pulled into a conversation on demand.
+    """
+
+    id: str = Field(default_factory=_new_id)
+    title: str = Field(default="", description="Short idea title.")
+    content: str = Field(default="", description="Rich-text (HTML) body.")
+    materials: list[Material] = Field(
+        default_factory=list, description="Attached files/links."
+    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
+
+
+class AcademicSession(_StrictModel):
+    """A session attached to an academic task."""
+    id: str = Field(default_factory=_new_id)
+    task_id: str = Field(description="The ID of the parent academic task.")
+    date: date_type = Field(description="Date of the session.")
+    start_time: str = Field(description="Start time (e.g. HH:MM).")
+    end_time: str = Field(description="End time (e.g. HH:MM).")
+    duration_minutes: int = Field(description="Duration in minutes.")
+    notes: str = Field(default="", description="Session notes.")
+
+
+class DailyNote(_StrictModel):
+    """A general daily note for quick captures, displayed on the homepage."""
+    id: str = Field(default_factory=_new_id)
+    date: date_type = Field(description="The date of the note.")
+    content: str = Field(default="", description="Markdown content of the note.")
+    created_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
+
+
 __all__ = [
     "AcademicSubtype",
     "Material",
@@ -268,4 +321,5 @@ __all__ = [
     "JournalItemType",
     "JournalItem",
     "Journal",
+    "Idea",
 ]

@@ -192,6 +192,8 @@ class UsageTracker:
             "completion_tokens": total_completion,
             "total_tokens": total_tokens,
             "total_cost_usd": round(total_cost, 6),
+            # Backward-compatible alias for clients expecting `cost_usd`.
+            "cost_usd": round(total_cost, 6),
             "avg_cost_per_call_usd": round(total_cost / total_calls, 6)
             if total_calls
             else 0.0,
@@ -222,6 +224,7 @@ class UsageTracker:
             **cats,
             "total": {
                 "total_cost_usd": round(grand_cost, 6),
+                "cost_usd": round(grand_cost, 6),
                 "total_tokens": grand_tokens,
             },
         }

@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
-import { getDashboard, type DashboardData } from "../api";
-import { Badge, Card, Button } from "../ui";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { getDashboard, getDailyNotes, upsertDailyNote, type DashboardData, type DailyNote } from "../api";
+import { Badge, Card } from "../ui";
 import ChatTerminal from "../components/ChatTerminal";
 import TaskCard from "../components/TaskCard";
 import NotionEditor from "../components/NotionEditor";
-import { upsertJournal, getJournals, type Journal } from "../api";
+
+const getTodayDateStr = () => {
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().split("T")[0];
+};
 
 export default function HomePage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -12,34 +17,16 @@ export default function HomePage() {
   const [timeFilter, setTimeFilter] = useState<"Tümü" | "Bugün" | "Bu hafta" | "Bu ay">("Tümü");
   const [statusFilter, setStatusFilter] = useState<"Tümü" | "Tamamlandı" | "Bekliyor">("Tümü");
 
-  // Journal Modal
-  const [showJournalModal, setShowJournalModal] = useState(false);
-  const [todayJournal, setTodayJournal] = useState<Journal | null>(null);
+  const todayStr = getTodayDateStr();
+  const todayKey = `jarvis_daily_note_${todayStr}`;
 
-  useEffect(() => {
-    // Load today's journal on mount
-    const loadJournal = async () => {
-      try {
-        const journals = await getJournals();
-        const todayStr = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD
-        const todayJ = journals.find(j => j.date === todayStr);
-        if (todayJ) setTodayJournal(todayJ);
-      } catch (e) {
-        console.error("Journal loading error:", e);
-      }
-    };
-    void loadJournal();
-  }, []);
-
-  const handleSaveJournal = async (content: string) => {
-    const todayStr = new Date().toLocaleDateString("sv-SE");
-    try {
-      const saved = await upsertJournal(todayStr, content);
-      setTodayJournal(saved);
-    } catch (e) {
-      console.error("Failed to save journal:", e);
-    }
-  };
+  // Daily note states
+  const [dailyNote, setDailyNote] = useState<DailyNote | null>(null);
+  const [noteContent, setNoteContent] = useState(() => {
+    return localStorage.getItem(todayKey) || "";
+  });
+  const [savingNote, setSavingNote] = useState(false);
+  const saveTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const refresh = async () => {
@@ -50,14 +37,47 @@ export default function HomePage() {
         setError((e as Error).message);
       }
     };
+    const loadNote = async () => {
+      try {
+        const notes = await getDailyNotes();
+        const todayNote = notes.find(n => n.date === todayStr);
+        if (todayNote) {
+          setDailyNote(todayNote);
+          const local = localStorage.getItem(todayKey) || "";
+          if (!local || todayNote.content.length >= local.length) {
+            setNoteContent(todayNote.content);
+            localStorage.setItem(todayKey, todayNote.content);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
     void refresh();
+    void loadNote();
     const id = setInterval(() => void refresh(), 15000);
     return () => clearInterval(id);
   }, []);
 
+  const handleNoteChange = useCallback((html: string) => {
+    setNoteContent(html);
+    localStorage.setItem(todayKey, html);
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = window.setTimeout(async () => {
+      setSavingNote(true);
+      try {
+        await upsertDailyNote(todayStr, html);
+      } catch (e) {
+        console.error("Failed to save daily note", e);
+      } finally {
+        setSavingNote(false);
+      }
+    }, 1000);
+  }, []);
+
   const tasks = (data?.tasks ?? [])
     .slice()
-    .sort((a, b) => a.deadline.localeCompare(b.deadline));
+    .sort((a, b) => (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999"));
     
   const filteredTasks = tasks.filter(t => {
     // Tamamlanma filter
@@ -66,6 +86,7 @@ export default function HomePage() {
     
     // Zaman filter
     if (timeFilter !== "Tümü") {
+      if (!t.deadline) return false; // no deadline → not part of any time window
       const deadline = new Date(t.deadline);
       const now = new Date();
       let limit = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
@@ -89,14 +110,9 @@ export default function HomePage() {
       <Card
         title="Günüm"
         right={
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => setShowJournalModal(true)}>
-              Günlük/Fikir Ekle
-            </Button>
-            <Badge tone={data?.pending_count ? "amber" : "emerald"}>
-              {data?.pending_count ?? 0} bekleyen
-            </Badge>
-          </div>
+          <Badge tone={data?.pending_count ? "amber" : "emerald"}>
+            {data?.pending_count ?? 0} bekleyen
+          </Badge>
         }
         bodyClassName="flex flex-col gap-3 overflow-y-auto p-4"
       >
@@ -106,7 +122,18 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="text-[11px] uppercase tracking-wider text-zinc-500">
+        {/* Daily Note Editor */}
+        <div className="relative flex flex-col rounded-xl border border-line bg-surface-1 overflow-hidden shrink-0 min-h-[250px]">
+          <div className="flex items-center justify-between border-b border-line bg-surface-2/50 px-3 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Günüm Notu</span>
+            <span className="text-[10px] text-zinc-500">{savingNote ? "Kaydediliyor..." : "Kaydedildi"}</span>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <NotionEditor initialContent={noteContent} onChange={handleNoteChange} />
+          </div>
+        </div>
+
+        <div className="text-[11px] uppercase tracking-wider text-zinc-500 mt-2">
           Görevler & son tarihler
         </div>
         
@@ -162,31 +189,6 @@ export default function HomePage() {
       <div className="h-full min-h-0">
         <ChatTerminal />
       </div>
-
-      {/* Journal Modal */}
-      {showJournalModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="flex h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-line p-4">
-              <h2 className="text-lg font-semibold text-zinc-100">
-                Günün Fikirleri ({new Date().toLocaleDateString("tr-TR")})
-              </h2>
-              <button 
-                className="text-zinc-400 hover:text-white"
-                onClick={() => setShowJournalModal(false)}
-              >
-                Kapat
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <NotionEditor 
-                initialContent={todayJournal?.content || ""}
-                onChange={(html) => handleSaveJournal(html)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

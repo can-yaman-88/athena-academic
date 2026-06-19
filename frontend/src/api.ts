@@ -354,3 +354,62 @@ export const analyzeJournals = (journalIds: string[]) =>
   jsend<{ status: string; extracted: number }>("/journals/ai-analyze", "POST", {
     journal_ids: journalIds,
   });
+
+// --------------------------------------------------------------------------- //
+// Daily Notes
+// --------------------------------------------------------------------------- //
+export interface DailyNote {
+  id: string;
+  date: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getDailyNotes = () => jget<DailyNote[]>("/daily_notes");
+export const upsertDailyNote = (date: string, content: string) =>
+  jsend<DailyNote>("/daily_notes", "POST", { date, content });
+
+// --------------------------------------------------------------------------- //
+// Ideas (free-form notes with materials; no AI processing)
+// --------------------------------------------------------------------------- //
+export interface Idea {
+  id: string;
+  title: string;
+  content: string;
+  materials: Material[];
+  created_at: string;
+  updated_at: string;
+}
+
+export const getIdeas = () => jget<Idea[]>("/ideas");
+export const createIdea = (title = "", content = "") =>
+  jsend<Idea>("/ideas", "POST", { title, content });
+export const updateIdea = (id: string, patch: { title?: string; content?: string }) =>
+  jsend<Idea>(`/ideas/${id}`, "PATCH", patch);
+export const deleteIdea = (id: string) =>
+  jsend<{ status: string }>(`/ideas/${id}`, "DELETE");
+
+export const addIdeaMaterial = (
+  id: string,
+  m: { kind?: string; name: string; source: string }
+) => jsend<Idea>(`/ideas/${id}/materials`, "POST", m);
+
+export async function uploadIdeaFile(id: string, file: File): Promise<Idea> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_URL}/ideas/${id}/files`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) throw new Error(`idea file upload ${res.status}`);
+  return res.json();
+}
+
+export const ideaFileUrl = (id: string, materialId: string) =>
+  `${API_URL}/ideas/${id}/materials/${materialId}/download`;
+
+// --------------------------------------------------------------------------- //
+// Tags
+// --------------------------------------------------------------------------- //
+export const getTags = () => jget<string[]>("/tags");

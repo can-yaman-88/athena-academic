@@ -59,7 +59,9 @@ def _norm_date(v: Any) -> str:
 
 def _normalize(rec: dict) -> dict:
     """Map a loose record (any source) onto PhysicalLoad fields with defaults."""
-    g = lambda *ks: next((rec[k] for k in ks if k in rec and rec[k] not in (None, "")), None)  # noqa: E731
+    # Case-insensitive lookup so "RPE", "Duration", "Name" etc. all map correctly.
+    lc = {str(k).lower(): v for k, v in rec.items()}
+    g = lambda *ks: next((lc[k] for k in ks if k in lc and lc[k] not in (None, "")), None)  # noqa: E731
 
     duration = _to_int(g("duration_minutes", "duration", "minutes")) or _DEFAULT_DURATION
     rpe = _to_int(g("rpe_score", "rpe")) or _DEFAULT_RPE
@@ -98,29 +100,34 @@ def _parse_fit(path: Path) -> list[dict]:
     import fitdecode
 
     out: list[dict] = []
-    with fitdecode.FitReader(str(path)) as fit:
-        for frame in fit:
-            if not isinstance(frame, fitdecode.FitDataMessage) or frame.name != "session":
-                continue
-            vals: dict[str, Any] = {}
-            for f in frame.fields:
-                vals[f.name] = f.value
-            dist_m = _to_float(vals.get("total_distance"))
-            timer_s = _to_float(vals.get("total_timer_time") or vals.get("total_elapsed_time"))
-            speed_ms = _to_float(vals.get("enhanced_avg_speed") or vals.get("avg_speed"))
-            speed_kmh = speed_ms * 3.6 if speed_ms else None
-            out.append(
-                _normalize(
-                    {
-                        "date": vals.get("start_time"),
-                        "duration_minutes": round(timer_s / 60) if timer_s else None,
-                        "distance_km": dist_m / 1000 if dist_m else None,
-                        "avg_speed_kmh": speed_kmh,
-                        "avg_hr": vals.get("avg_heart_rate"),
-                        "title": vals.get("sport"),
-                    }
+    # Defensive: a truncated/corrupt FIT raises mid-stream; return whatever
+    # sessions were decoded so far rather than failing the whole upload.
+    try:
+        with fitdecode.FitReader(str(path)) as fit:
+            for frame in fit:
+                if not isinstance(frame, fitdecode.FitDataMessage) or frame.name != "session":
+                    continue
+                vals: dict[str, Any] = {}
+                for f in frame.fields:
+                    vals[f.name] = f.value
+                dist_m = _to_float(vals.get("total_distance"))
+                timer_s = _to_float(vals.get("total_timer_time") or vals.get("total_elapsed_time"))
+                speed_ms = _to_float(vals.get("enhanced_avg_speed") or vals.get("avg_speed"))
+                speed_kmh = speed_ms * 3.6 if speed_ms else None
+                out.append(
+                    _normalize(
+                        {
+                            "date": vals.get("start_time"),
+                            "duration_minutes": round(timer_s / 60) if timer_s else None,
+                            "distance_km": dist_m / 1000 if dist_m else None,
+                            "avg_speed_kmh": speed_kmh,
+                            "avg_hr": vals.get("avg_heart_rate"),
+                            "title": vals.get("sport"),
+                        }
+                    )
                 )
-            )
+    except Exception as exc:  # noqa: BLE001 - corrupt/partial FIT
+        logger.warning("FIT parse stopped early (%s): %d session(s) recovered", exc, len(out))
     return out
 
 

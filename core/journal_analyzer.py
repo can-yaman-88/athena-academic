@@ -28,10 +28,10 @@ You analyze a user's daily journal/idea notebook entry and extract structured it
 You must extract the following items if they are present in the text:
 
 1. GOAL (hedef): If the user explicitly sets a goal or writes "(hedef)".
-2. TASK (görev): If the user assigns themselves a task or action item.
-3. PROMISE (söz): If the user makes a promise to themselves or someone else.
-4. CRITICISM (eleştiri): If the user criticizes something or provides negative feedback.
-5. IDEA (fikir): If the user mentions a new idea, a realization, or something they want to try.
+2. CRITICISM (eleştiri): If the user criticizes something or provides negative feedback.
+3. IDEA (fikir): If the user mentions a new idea, a realization, or something they want to try.
+
+Do NOT extract tasks or promises from the text.
 
 Return a list of these items. If none are found, return an empty list. Be concise in the content you extract.
 """

@@ -27,3 +27,6 @@ frontend/design-system/
 *.swp
 .DS_Store
 *~
+
+# TestSprite runtime artifacts (logs, raw results — bulky/regenerated)
+testsprite_tests/tmp/

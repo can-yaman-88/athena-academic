@@ -3,28 +3,11 @@ import { analyzeNotes, createTask, getTasks, type Task } from "../api";
 import { Button } from "../ui";
 import TaskCard from "./TaskCard";
 
-const inputCls =
-  "rounded-lg border border-line-strong bg-surface-2 px-2.5 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-500";
-
-function defaultDeadline(): string {
-  const d = new Date();
-  d.setHours(23, 59, 0, 0);
-  const off = d.getTimezoneOffset();
-  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
-}
 
 export default function TaskManager() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeMsg, setAnalyzeMsg] = useState("");
-  const [form, setForm] = useState({
-    title: "",
-    deadline: defaultDeadline(),
-    discipline: "General",
-    estimated_hours: 1,
-    category: "daily" as "daily" | "academic",
-    subtype: "project" as "project" | "assignment" | "study_session",
-  });
 
   const refresh = useCallback(async () => {
     try {
@@ -37,19 +20,6 @@ export default function TaskManager() {
     void refresh();
   }, [refresh]);
 
-  async function add() {
-    if (!form.title.trim()) return;
-    await createTask({
-      title: form.title.trim(),
-      deadline: form.deadline,
-      discipline: form.discipline || "General",
-      estimated_hours: Number(form.estimated_hours) || 1,
-      category: form.category,
-      subtype: form.category === "academic" ? form.subtype : null,
-    });
-    setForm({ ...form, title: "" });
-    await refresh();
-  }
 
   async function analyze() {
     setAnalyzing(true);
@@ -74,32 +44,6 @@ export default function TaskManager() {
 
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* create form */}
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-line bg-surface-2/50 p-3 sm:grid-cols-12">
-        <input className={`${inputCls} col-span-2 sm:col-span-3`} placeholder="Başlık" value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-          onKeyDown={(e) => e.key === "Enter" && void add()} />
-        <select className={`${inputCls} sm:col-span-2`} value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value as "daily" | "academic" })}>
-          <option value="daily">Günlük</option>
-          <option value="academic">Akademik</option>
-        </select>
-        {form.category === "academic" && (
-          <select className={`${inputCls} sm:col-span-2`} value={form.subtype}
-            onChange={(e) => setForm({ ...form, subtype: e.target.value as typeof form.subtype })}>
-            <option value="project">proje</option>
-            <option value="assignment">ödev</option>
-            <option value="study_session">seans</option>
-          </select>
-        )}
-        <input type="datetime-local" className={`${inputCls} sm:col-span-2`} value={form.deadline}
-          onChange={(e) => setForm({ ...form, deadline: e.target.value })} />
-        <input className={`${inputCls} sm:col-span-1`} placeholder="Alan" value={form.discipline}
-          onChange={(e) => setForm({ ...form, discipline: e.target.value })} />
-        <input type="number" min={0.5} step={0.5} className={`${inputCls} sm:col-span-1`} value={form.estimated_hours}
-          onChange={(e) => setForm({ ...form, estimated_hours: Number(e.target.value) })} />
-        <Button className="sm:col-span-1" onClick={() => void add()}>Ekle</Button>
-      </div>
 
       {/* analyze notes */}
       <div className="flex items-center gap-3">

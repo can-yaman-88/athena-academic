@@ -38,6 +38,7 @@ from core.log_bus import LogBus, LogBusHandler
 from core.note_analyzer import analyze_notes
 from core.schemas import (
     AcademicSubtype,
+    Idea,
     Material,
     Note,
     PhysicalLoad,
@@ -149,31 +150,60 @@ app.add_middleware(
 # --------------------------------------------------------------------------- #
 # Request models
 # --------------------------------------------------------------------------- #
+class Mention(BaseModel):
+    """A reference the user explicitly picked in the chat box (@ or #).
+
+    ``type`` is one of: task, subtask, workout, idea, model, tag. ``id`` is the
+    object id (or the tag/model name). The backend resolves each to its real
+    content so the model receives the actual referenced material, not just a label.
+    """
+
+    type: str
+    id: str
+    label: Optional[str] = None
+
+
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
     attachment_ids: list[str] = Field(default_factory=list)
     model: Optional[str] = None
     system_prompt: Optional[str] = None
     history: list[dict[str, str]] = Field(default_factory=list)
+    mentions: list[Mention] = Field(default_factory=list)
 
 class JournalRequest(BaseModel):
-    date: str = Field(min_length=1)
+    date: str
     content: str
+
+class DailyNoteRequest(BaseModel):
+    date: Optional[str] = None
+    content: str = ""
 
 class JournalAnalyzeRequest(BaseModel):
     journal_ids: list[str]
 
 
+class IdeaCreateRequest(BaseModel):
+    title: str = ""
+    content: str = ""
+
+
+class IdeaUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+
+
 class TaskCreateRequest(BaseModel):
     title: str = Field(min_length=1)
-    deadline: datetime
-    discipline: str = Field(default_factory=lambda: settings.default_discipline)
+    deadline: Optional[datetime] = None
+    discipline: Optional[str] = None
     estimated_hours: float = Field(
         default_factory=lambda: settings.default_estimated_hours, gt=0
     )
     category: TaskCategory = TaskCategory.DAILY
     subtype: Optional[AcademicSubtype] = None
     parent_id: Optional[str] = None
+    status: Optional[TaskStatus] = None
 
 
 class TaskUpdateRequest(BaseModel):
@@ -256,9 +286,286 @@ async def health(request: Request) -> dict[str, Any]:
     return {"status": "ok", "graph_ready": request.app.state.graph is not None}
 
 
+@app.get("/tags")
+async def list_tags(request: Request) -> list[str]:
+    """Return merged set of task tags and hashtag-like tokens from journal content."""
+    db: SQLiteManager = request.app.state.sqlite
+    tasks = await db.list_tasks()
+    tags: set[str] = set()
+    for t in tasks:
+        tags.update(t.tags or [])
+    # Also include hashtags found in journal bodies.
+    import re
+    journals = await db.get_journals()
+    for j in journals:
+        for match in re.finditer(r"#([\w\p{L}\p{N}_-]+)", j.content, re.UNICODE):
+            tags.add(match.group(1))
+    return sorted(tags)
+
+
+async def _resolve_message_mentions(message: str, db: SQLiteManager) -> str:
+    """Replace @ and # tokens with their real content before sending to the LLM.
+
+    Handles:
+    - @model-name -> model slug note
+    - @task-title / @task-id / quoted task title -> full task dump (notes, subtasks)
+    - @workout-title / @workout-id -> workout details
+    - #tag -> short note that tag usage means task/journal context
+    """
+    import re
+
+    out = message
+
+    # Models: map friendly display name to slug via settings.available_models.
+    def replace_model(m: re.Match[str]) -> str:
+        key = m.group(1).strip()
+        for friendly, slug in settings.available_models.items():
+            if friendly.lower() == key.lower():
+                return f"[Model: {friendly} -> {slug}]"
+        return m.group(0)
+
+    out = re.sub(r"@([\w.-]+)\b", replace_model, out)
+
+    # Tasks: resolve by ID if the token is a UUID-like id (length >= 10 and has hexdigits),
+    # otherwise resolve by title substring / fuzzy match.
+    async def task_dump(tid_or_title: str) -> str:
+        tid_or_title_stripped = tid_or_title.strip().strip('"').strip("'")
+        try:
+            all_tasks = await db.list_tasks()
+        except Exception:
+            return "[görev bulunamadı]"
+
+        # Direct id match?
+        target = next((t for t in all_tasks if t.id == tid_or_title_stripped), None)
+        if target is None:
+            target = next(
+                (
+                    t
+                    for t in all_tasks
+                    if tid_or_title_stripped.lower() in t.title.lower()
+                ),
+                None,
+            )
+        if target is None:
+            return "[görev bulunamadı]"
+
+        parts = [
+            f"Görev: {target.title}",
+            f"Son tarih: {target.deadline.isoformat()}",
+            f"Alan: {target.discipline}",
+            f"Tahmini süre: {target.estimated_hours}h",
+            f"Kategori: {target.category.value}",
+            f"Durum: {target.status.value}",
+            f"İlerleme: %{target.progress}",
+        ]
+        if target.tags:
+            parts.append(f"Etiketler: {', '.join(target.tags)}")
+        if target.notes:
+            parts.append("Notlar:\n" + "\n".join(f"- {n.text}" for n in target.notes))
+        subtasks = [t for t in all_tasks if t.parent_id == target.id]
+        if subtasks:
+            parts.append(
+                "Alt görevler:\n"
+                + "\n".join(f"- {s.title} ({s.deadline.isoformat()})" for s in subtasks)
+            )
+        return "\n".join(parts)
+
+    # Match both @"title with spaces" and @simple_token
+    task_pattern = re.compile(r'@"([^"]+)"|@([^\s]+)')
+
+    async def replace_task(m: re.Match[str]) -> str:
+        token = m.group(1) if m.group(1) is not None else m.group(2)
+        return await task_dump(token)
+
+    # We need to await inside an async helper; run substitution sequentially.
+    async def resolve_tasks(text: str) -> str:
+        result = []
+        last = 0
+        for m in task_pattern.finditer(text):
+            result.append(text[last : m.start()])
+            result.append(await replace_task(m))
+            last = m.end()
+        result.append(text[last:])
+        return "".join(result)
+
+    # Workouts: similar to tasks but simpler.
+    async def workout_dump(token: str) -> str:
+        token = token.strip().strip('"').strip("'")
+        try:
+            workouts = await db.list_physical_loads()
+        except Exception:
+            return "[antrenman bulunamadı]"
+        target = next(
+            (w for w in workouts if w.id == token or (w.title and token.lower() in w.title.lower())),
+            None,
+        )
+        if target is None:
+            return "[antrenman bulunamadı]"
+        return (
+            f"Antrenman: {target.title or target.date}\n"
+            f"Tarih: {target.date}\n"
+            f"Süre: {target.duration_minutes} dk\n"
+            f"Durum: {target.status.value}"
+            + (f"\nMesafe: {target.distance_km} km" if target.distance_km else "")
+            + (f"\nTempo: {target.pace}/km" if target.pace else "")
+            + (f"\nRPE: {target.rpe_score}" if target.rpe_score else "")
+        )
+
+    workout_pattern = re.compile(r'@"([^"]+)"|@([^\s]+)')
+
+    async def resolve_workouts(text: str) -> str:
+        result = []
+        last = 0
+        for m in workout_pattern.finditer(text):
+            token = m.group(1) if m.group(1) is not None else m.group(2)
+            # Skip tokens that were already replaced as models above.
+            # Model replacements all start with '[Model:'.
+            if text[m.start() : m.end()].startswith("@[") and "[Model:" in text[m.start() : m.end()]:
+                result.append(text[last:m.start()])
+                result.append("[Model zaten çözümlendi]")
+                last = m.end()
+                continue
+            result.append(text[last:m.start()])
+            result.append(await workout_dump(token))
+            last = m.end()
+        result.append(text[last:])
+        return "".join(result)
+
+    out = await resolve_tasks(out)
+
+    # Tag hints: keep them visible but add a context note.
+    def replace_tag(m: re.Match) -> str:
+        return f"[{m.group(0)}]"
+
+    out = re.sub(r"#([\w-]+)", replace_tag, out)
+    return out
+
+
+def _task_context_block(target: Task, all_tasks: list[Task]) -> str:
+    """Full human-readable dump of a task incl. notes, materials and subtasks."""
+    import re as _re
+
+    def _plain(html: str) -> str:
+        return _re.sub(r"<[^>]+>", " ", html or "").replace("&nbsp;", " ").strip()
+
+    parts = [
+        f"Görev: {target.title}",
+        f"Son tarih: {target.deadline.isoformat()}",
+        f"Alan: {target.discipline}",
+        f"Tahmini süre: {target.estimated_hours}h",
+        f"Kategori: {target.category.value}",
+        f"Durum: {target.status.value}",
+        f"İlerleme: %{target.progress}",
+    ]
+    if target.tags:
+        parts.append(f"Etiketler: {', '.join(target.tags)}")
+    if target.notes:
+        parts.append("Notlar:\n" + "\n".join(f"- {_plain(n.text)}" for n in target.notes))
+    if target.materials:
+        parts.append(
+            "Materyaller:\n"
+            + "\n".join(
+                f"- {m.name}" + (f" ({m.source})" if m.source else "")
+                for m in target.materials
+            )
+        )
+    subtasks = [t for t in all_tasks if t.parent_id == target.id]
+    if subtasks:
+        parts.append(
+            "Alt görevler:\n"
+            + "\n".join(
+                f"- {s.title} (%{s.progress}, {s.status.value})" for s in subtasks
+            )
+        )
+    return "\n".join(parts)
+
+
+def _workout_context_block(target: PhysicalLoad) -> str:
+    lines = [
+        f"Antrenman: {target.title or target.date}",
+        f"Tarih: {target.date}",
+        f"Süre: {target.duration_minutes} dk",
+        f"Durum: {target.status.value}",
+    ]
+    if target.distance_km:
+        lines.append(f"Mesafe: {target.distance_km} km")
+    if target.pace:
+        lines.append(f"Tempo: {target.pace}/km")
+    if target.avg_hr:
+        lines.append(f"Ort. nabız: {target.avg_hr} bpm")
+    if target.rpe_score:
+        lines.append(f"RPE: {target.rpe_score}")
+    if target.note:
+        import re as _re
+        lines.append("Not: " + _re.sub(r"<[^>]+>", " ", target.note).strip())
+    return "\n".join(lines)
+
+
+async def _resolve_structured_mentions(
+    mentions: list["Mention"], db: SQLiteManager
+) -> str:
+    """Turn explicitly-picked @/# mentions into a real-content context block.
+
+    Unlike the regex text resolver this is unambiguous: each mention carries the
+    object id and type the user actually selected, so multi-word titles, subtasks,
+    workouts and ideas all resolve to their full content.
+    """
+    if not mentions:
+        return ""
+
+    all_tasks: Optional[list[Task]] = None
+    workouts: Optional[list[PhysicalLoad]] = None
+    blocks: list[str] = []
+
+    for m in mentions:
+        kind = (m.type or "").lower()
+        try:
+            if kind in ("task", "subtask", "görev", "alt görev"):
+                if all_tasks is None:
+                    all_tasks = await db.list_tasks()
+                target = next((t for t in all_tasks if t.id == m.id), None)
+                if target:
+                    blocks.append(_task_context_block(target, all_tasks))
+            elif kind in ("workout", "antrenman"):
+                if workouts is None:
+                    workouts = await db.list_physical_loads()
+                target = next((w for w in workouts if w.id == m.id), None)
+                if target:
+                    blocks.append(_workout_context_block(target))
+            elif kind in ("idea", "fikir"):
+                get_idea = getattr(db, "get_idea", None)
+                if get_idea is not None:
+                    try:
+                        idea = await get_idea(m.id)
+                        import re as _re
+                        body = _re.sub(r"<[^>]+>", " ", idea.content or "").strip()
+                        blocks.append(f"Fikir: {idea.title}\n{body}")
+                    except Exception:
+                        pass
+            elif kind in ("model",):
+                slug = settings.available_models.get(m.id, m.id)
+                blocks.append(f"[Model talebi: {m.id} -> {slug}]")
+            elif kind in ("tag", "etiket"):
+                blocks.append(f"[Etiket bağlamı: #{m.id}]")
+        except Exception:  # noqa: BLE001 - never break chat on a bad mention
+            logger.exception("failed to resolve mention %s/%s", m.type, m.id)
+
+    if not blocks:
+        return ""
+    return (
+        "## Bağlam — kullanıcının bahsettiği öğeler\n"
+        "(Aşağıdaki içerik kullanıcının @/# ile işaret ettiği gerçek verilerdir.)\n\n"
+        + "\n\n".join(blocks)
+    )
+
+
 @app.post("/chat")
 async def chat(request: Request, body: ChatRequest) -> StreamingResponse:
-    """Stream the LangGraph agent's output for a user message as SSE."""
+    """Stream the LangGraph agent's output for a user message as SSE.
+
+    @/# mentions in the message are resolved against the local database so that
+    the model receives the real referenced content.
+    """
     graph = request.app.state.graph
     if graph is None:
         raise HTTPException(
@@ -276,6 +583,14 @@ async def chat(request: Request, body: ChatRequest) -> StreamingResponse:
                  "path": mat["source_path"], "markdown_path": None}
             )
 
+    # Prefer the explicit structured mentions the user picked in the UI (robust:
+    # carries ids/types). Fall back to the regex text resolver for typed mentions.
+    structured_ctx = await _resolve_structured_mentions(body.mentions, db)
+    if structured_ctx:
+        resolved_message = f"{structured_ctx}\n\n---\n\n{body.message}"
+    else:
+        resolved_message = await _resolve_message_mentions(body.message, db)
+
     async def event_stream() -> AsyncIterator[str]:
         from langchain_core.messages import AIMessage, SystemMessage
         history_msgs = []
@@ -288,10 +603,14 @@ async def chat(request: Request, body: ChatRequest) -> StreamingResponse:
             elif h.get("role") == "agent":
                 history_msgs.append(AIMessage(content=h.get("text", "")))
         
+        override_slug = body.model
+        if override_slug:
+            override_slug = settings.available_models.get(override_slug, override_slug)
+
         state = {
-            "messages": history_msgs + [HumanMessage(content=body.message)],
+            "messages": history_msgs + [HumanMessage(content=resolved_message)],
             "attachments": attachments,
-            "model_override": body.model,
+            "model_override": override_slug,
         }
         try:
             async for update in graph.astream(state, stream_mode="updates"):
@@ -379,7 +698,7 @@ async def chat_upload(
         id=material_id, name=filename, kind=kind, source_path=str(dest),
         markdown=markdown,
     )
-    request.app.state.log_bus.emit(f"Yeni eklenti yüklendi: {filename} ({kind})", level="info")
+    logger.info("Yeni eklenti yüklendi: %s (%s)", filename, kind)
     preview = markdown[:500]
     return {
         "id": material_id,
@@ -399,8 +718,10 @@ async def upload(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     instructions: str = Form(""),
+    processing_instructions: Optional[str] = Form(None),
 ) -> dict[str, Any]:
     """Save an uploaded PDF and run the in-process engine in the background."""
+    instructions = instructions or processing_instructions or ""
     filename = Path(file.filename or "upload.pdf").name  # strip any path traversal
     settings.uploads_dir.mkdir(parents=True, exist_ok=True)
     dest = settings.uploads_dir / filename
@@ -408,6 +729,9 @@ async def upload(
     content = await file.read()
     await asyncio.to_thread(dest.write_bytes, content)
 
+    # Pre-generate the job id so the caller can correlate this upload with its
+    # row in /pdf_jobs immediately (the background task persists under this id).
+    job_id = str(uuid4())
     background_tasks.add_task(
         process_academic_pdf,
         str(dest),
@@ -416,11 +740,14 @@ async def upload(
         usage_tracker=request.app.state.usage,
         log_bus=request.app.state.log_bus,
         sqlite_manager=request.app.state.sqlite,
+        job_id=job_id,
     )
-    logger.info("queued upload %s (%d bytes) for processing", filename, len(content))
-    request.app.state.log_bus.emit(f"Yeni PDF İşlenmek Üzere Sıraya Alındı: {filename} ({len(content)} bytes)", level="info")
+    logger.info(
+        "Yeni PDF İşlenmek Üzere Sıraya Alındı: %s (%d bytes)", filename, len(content)
+    )
     return {
         "status": "accepted",
+        "job_id": job_id,
         "filename": filename,
         "message": "PDF saved and queued for processing.",
     }
@@ -468,23 +795,30 @@ async def dashboard_data(request: Request) -> dict[str, Any]:
 # Task CRUD
 # --------------------------------------------------------------------------- #
 @app.get("/tasks")
-async def list_tasks(request: Request, status: Optional[TaskStatus] = None) -> dict[str, Any]:
+async def list_tasks(
+    request: Request,
+    status: Optional[TaskStatus] = None,
+    category: Optional[TaskCategory] = None,
+) -> dict[str, Any]:
     db: SQLiteManager = request.app.state.sqlite
     tasks = await db.list_tasks(status)
+    if category is not None:
+        tasks = [t for t in tasks if t.category == category]
     return {"tasks": [t.model_dump(mode="json") for t in tasks]}
 
 
-@app.post("/tasks")
+@app.post("/tasks", status_code=201)
 async def create_task(request: Request, body: TaskCreateRequest) -> dict[str, Any]:
     db: SQLiteManager = request.app.state.sqlite
     task = Task(
         title=body.title,
         deadline=body.deadline,
-        discipline=body.discipline,
+        discipline=body.discipline or settings.default_discipline,
         estimated_hours=body.estimated_hours,
         category=body.category,
         subtype=body.subtype if body.category == TaskCategory.ACADEMIC else None,
         parent_id=body.parent_id,
+        status=body.status or TaskStatus.PENDING,
     )
     await db.create_task(task)
     return task.model_dump(mode="json")
@@ -512,10 +846,23 @@ async def update_task(request: Request, task_id: str, body: TaskUpdateRequest) -
 
 
 @app.post("/tasks/{task_id}/complete")
-async def complete_task(request: Request, task_id: str) -> dict[str, Any]:
+async def complete_task(request: Request, task_id: str, background_tasks: BackgroundTasks) -> dict[str, Any]:
     db: SQLiteManager = request.app.state.sqlite
     try:
         task = await db.mark_task_completed(task_id)
+        
+        if task.is_spaced_repetition:
+            from core.spaced_repetition import handle_spaced_repetition_completion
+            usage = getattr(request.app.state, "usage", None)
+            log_bus = getattr(request.app.state, "log_bus", None)
+            background_tasks.add_task(
+                handle_spaced_repetition_completion,
+                task,
+                db,
+                usage,
+                log_bus
+            )
+            
     except RecordNotFoundError:
         raise HTTPException(status_code=404, detail="Task not found")
     return task.model_dump(mode="json")
@@ -759,6 +1106,13 @@ async def upload_workouts(
     content = await file.read()
     await asyncio.to_thread(dest.write_bytes, content)
 
+    # Files with an unknown/missing extension but JSON content (e.g. uploads sent
+    # as application/octet-stream) are still parsed as JSON rather than rejected.
+    if dest.suffix.lower() not in (".json", ".csv", ".fit"):
+        if content.lstrip()[:1] in (b"[", b"{"):
+            dest = dest.with_suffix(dest.suffix + ".json")
+            await asyncio.to_thread(dest.write_bytes, content)
+
     try:
         records = await asyncio.to_thread(parse_workouts, dest)
     except Exception as exc:  # noqa: BLE001
@@ -894,6 +1248,14 @@ async def _sync_runalyze_activities(db: SQLiteManager, token: str) -> int:
                 if load.date < cutoff:
                     reached_cutoff = True
                     continue
+                
+                try:
+                    existing = await db.get_physical_load(load.id)
+                    if existing.note:
+                        load.note = existing.note
+                except RecordNotFoundError:
+                    pass
+                
                 await db.create_physical_load(load)  # INSERT OR REPLACE = upsert
                 synced += 1
 
@@ -1113,8 +1475,139 @@ async def analyze_journals(request: Request, body: JournalAnalyzeRequest) -> dic
                 await db.upsert_journal(journal)
                 extracted_items_count += len(analysis.items)
         except Exception as exc:
-            request.app.state.log_bus.emit(f"Failed to analyze journal {jid}: {exc}", level="error")
+            logger.error("Failed to analyze journal %s: %s", jid, exc)
 
     return {"status": "ok", "extracted": extracted_items_count}
+
+
+# --------------------------------------------------------------------------- #
+# Daily Notes
+# --------------------------------------------------------------------------- #
+from core.schemas import DailyNote
+
+@app.get("/daily_notes")
+async def get_daily_notes(request: Request) -> list[dict[str, Any]]:
+    db: SQLiteManager = request.app.state.sqlite
+    # This assumes db.get_daily_notes() exists
+    notes = await db.get_daily_notes()
+    return [n.model_dump(mode="json") for n in notes]
+
+@app.post("/daily_notes")
+async def upsert_daily_note(request: Request, body: DailyNoteRequest) -> dict[str, Any]:
+    db: SQLiteManager = request.app.state.sqlite
+
+    # Default to today when the client omits the date.
+    note_date = datetime.fromisoformat(body.date).date() if body.date else date.today()
+
+    # Try to find existing note for this date
+    notes = await db.get_daily_notes()
+    existing = next((n for n in notes if n.date == note_date), None)
+
+    if existing:
+        existing.content = body.content
+        existing.updated_at = datetime.now()
+        saved = await db.upsert_daily_note(existing)
+    else:
+        new_n = DailyNote(date=note_date, content=body.content)
+        saved = await db.upsert_daily_note(new_n)
+
+    return saved.model_dump(mode="json")
+
+# --------------------------------------------------------------------------- #
+# SSE Logging
+# --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# Ideas (free-form notes with materials; no AI processing)
+# --------------------------------------------------------------------------- #
+async def _get_idea_or_404(db: SQLiteManager, idea_id: str) -> Idea:
+    try:
+        return await db.get_idea(idea_id)
+    except RecordNotFoundError:
+        raise HTTPException(status_code=404, detail="Idea not found")
+
+
+@app.get("/ideas")
+async def list_ideas(request: Request) -> list[dict[str, Any]]:
+    db: SQLiteManager = request.app.state.sqlite
+    ideas = await db.list_ideas()
+    return [i.model_dump(mode="json") for i in ideas]
+
+
+@app.post("/ideas")
+async def create_idea(request: Request, body: IdeaCreateRequest) -> dict[str, Any]:
+    db: SQLiteManager = request.app.state.sqlite
+    idea = Idea(title=body.title, content=body.content)
+    await db.upsert_idea(idea)
+    return idea.model_dump(mode="json")
+
+
+@app.patch("/ideas/{idea_id}")
+async def update_idea(
+    request: Request, idea_id: str, body: IdeaUpdateRequest
+) -> dict[str, Any]:
+    db: SQLiteManager = request.app.state.sqlite
+    idea = await _get_idea_or_404(db, idea_id)
+    updates = body.model_dump(exclude_unset=True)
+    for field_name, value in updates.items():
+        setattr(idea, field_name, value)
+    idea.updated_at = datetime.now()
+    await db.upsert_idea(idea)
+    return idea.model_dump(mode="json")
+
+
+@app.delete("/ideas/{idea_id}")
+async def delete_idea(request: Request, idea_id: str) -> dict[str, str]:
+    db: SQLiteManager = request.app.state.sqlite
+    await db.delete_idea(idea_id)
+    return {"status": "deleted", "id": idea_id}
+
+
+@app.post("/ideas/{idea_id}/materials")
+async def add_idea_material(
+    request: Request, idea_id: str, body: MaterialCreateRequest
+) -> dict[str, Any]:
+    db: SQLiteManager = request.app.state.sqlite
+    idea = await _get_idea_or_404(db, idea_id)
+    idea.materials = [
+        *idea.materials,
+        Material(kind=body.kind, name=body.name, source=body.source),
+    ]
+    idea.updated_at = datetime.now()
+    await db.upsert_idea(idea)
+    return idea.model_dump(mode="json")
+
+
+@app.post("/ideas/{idea_id}/files")
+async def upload_idea_file(
+    request: Request, idea_id: str, file: UploadFile = File(...)
+) -> dict[str, Any]:
+    """Attach a raw file to an idea — stored untouched, never sent to the AI."""
+    db: SQLiteManager = request.app.state.sqlite
+    idea = await _get_idea_or_404(db, idea_id)
+    filename = Path(file.filename or "file").name
+    dest_dir = settings.data_dir / "idea_files" / idea_id
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    material = Material(kind="file", name=filename, source=filename)
+    dest = dest_dir / f"{material.id}_{filename}"
+    content = await file.read()
+    await asyncio.to_thread(dest.write_bytes, content)
+    material.source = str(dest)
+    idea.materials = [*idea.materials, material]
+    idea.updated_at = datetime.now()
+    await db.upsert_idea(idea)
+    return idea.model_dump(mode="json")
+
+
+@app.get("/ideas/{idea_id}/materials/{material_id}/download")
+async def download_idea_file(
+    request: Request, idea_id: str, material_id: str
+) -> FileResponse:
+    db: SQLiteManager = request.app.state.sqlite
+    idea = await _get_idea_or_404(db, idea_id)
+    mat = next((m for m in idea.materials if m.id == material_id), None)
+    if mat is None or mat.kind != "file" or not mat.source or not Path(mat.source).exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(mat.source, filename=mat.name)
+
 
 __all__ = ["app"]

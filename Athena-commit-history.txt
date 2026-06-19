@@ -1,3 +1,224 @@
+20.44
+Seans doğru çalışıyor ama alt görev bitirildi dediğimde o alt göreve seans eklemesine rağmen görevi tamamlandı olarak işaretlemiyor.
+
+
+
+
+
+20.33
+Bunun yerine yeni bir komut ekliyoruz, bu da /altakademik. Bu sayede alt görev oluşturmasını sağlayan bir komut elde etmiş oluruz hem de alt göreve gerek kalmayan görevlerde agörev komutunu kullanmaya devam ederiz.
+
+Ayrıca /altgörev ve görev komutlarında da benzer bir yapı izleyelim. /görev komutu alt görev olmada görev eklesin, yorumlarımı ve diğer yazdıklarmı görevin notlarına eklesin. /altgörev komutu da parantez içindeki değer kadar alt görev içeren bir görev oluştursun.
+
+Ayrıca tüm komutların promptlarını zenginleştirmeni ve hepsini CRISP-E metoduna göre yeniden yazmanı istiyorum.
+
+
+
+
+20.11
+Şunu fark ettim ki /altgörev ile /agörev beraber çalışmıyor. /görev ile /altgörev de beraber çalışmıyor. /görev komutuyla /altgörev komutunun beraber kullanılmasına gerek yok fakar akademik görevlerde alt görevler otomatik oluşturulmak zorunda. Fakat oluşturulmuyor. Bu çözmek için iki önerini bekliyorum.
+
+
+
+
+19.37
+Buna gerek yok, görev dağılım mimarisini kaldır, ben zaten manuel olarak model seçiyorum. Bir de @deepseek komutunu girdiğim zaman istek yine default modele gidiyor. Diğer modelleri seçmeyi de denedim fakat hepsinde yine default modele gidiyor. @model komutunu mesajın içinde bir kelime olrak algılıyorlar. Yani @model seçimi çalışmıyor.
+
+
+
+
+19.14
+@ ile model seçme işlemi başarısız oluyor, her seferinde default model dönüyor. Openrouter loglarından kontrol ettiğimde doğru modeli seçtiğini görüyorum fakat sistem loglarında her zaman default model döndürülmüş gibi oluyor bu yüzden de hem maliyet analizi hem de api logları hatalı oluyor. Bunu düzelt.
+/altgörev komutu otomatik olarak bir üst görev oluşturacak şekilde ayarlanmış. O yüzden tekrardan görev komutunu kullanmaya gerek yok fakat neden ikisi bir kullanıldığında yapay zeka alt görev oluşturmuyor?
+/altgörev komutu için bir güncellemem var: /altgörev() olarak güncelleyip en fazla parantez içindeki değer kadar alt görev oluşturmasını sağlayalım. Mesela 4 sayısını girersem en fazla 4, gerekmiyorsa 3 veya daha aşağısı olabilir.
+
+
+
+
+
+18.57
+/görev /altgörev Bugün için günlük yazmam gerekli. Bu günlükte çalışma sistemimi, antrenman sistemimi, düşünce sistemimi ve bütçe yönetimimi belirlemem lazım. Kendime 3 saat veriyorum.
+Bu mesajı attığım zaman görev ve ayrıntıları doğru oluşturuluyor fakat herhangi bir alt görev eklenmiyor. Bunun nedeni nedir? Bu sorunu çöz.
+Başka bir istekte @gpt5.5'e gönderdiğimde ise alt görevleri anladı ve sorunsuz oluşturdu. İkisi arasındaki fark nedir? İlk istekte qwen modeli kullanıldı.
+
+
+
+
+18.32
+Chatbox'da komutlar gözükmüyor.
+error: NetworkError when attempting to fetch resource. Böyle bir hata aldım.
+
+
+
+
+
+17.24
+Hatta bu komutları biraz daha derinleştirelim ve router modülünü tamamen devre dışı bırakalım.
+mevcut komutları da düzenlemeni istiyorum. Yeni komut listesi şu olacak:
+1. /görev : Görev ekler
+2. /agörev : Akademik kısmına görev ekler
+3. /altgörev : Yapay zekanın otomatik olarak alt görevler eklemesini sağlar
+4. /fikir() : Yapay zekanın girdi içinden parantez içindeki değer kadar fikir üretmesini sağlar. Bu değerin amacı her çıkarımı fikir saymaması ve ana fikirlere odaklanmasıdır.
+5. /antrenman : Tek bir antrenman ekler. Yorumlar da notlar kısmına eklenir.
+6. /seans @ : Mesaja eklenen akademik görevin altına bir seans ekler, yorumları da senasın notu olarak kaydeder. Buradaki @ alt görevlerden biri de olabilir.
+    Yeni görev: Akademik görevlere seans özelliği ekle. Süre, başlangıç saati, bitiş saati ve tarih verilerine sahip olsun. Seansa not eklenebilsin. Bu seans özelliği akademik görevlerin alt görevlerinde de kullanılabilsin.
+7. /plana : Akademik bir hedef için plan girdisinden görevler ve gerekliyse alt görevler oluşturur. Kesin olarak belirtilmediği sürece tarih, süre gibi şeyler girmez. Antreman planı için zaten antrenman sayfasında bir planlayıcı var.
+    Yeni görev: Son tarih, tahmini zaman gibi değerlerin boş olmasına izin verecek şekilde kodu düzenle. Ben herhangi bir değer vermediğim sürece bunlar boş dönsün.
+8. /aralık : Aralıklı görev oluşturur. Eğer görev alt görevler de içeriyorsa onları da aralıklı görev olarak oluşturur.
+
+Notları analiz etme kısmını tamamen kaldır.
+Görevler sekmesindeki elle görev ekleme kısmını tamamen kaldır.
+Günüm sayfasına görevlerin üstünde orta boy, notiondaki gallery görünümünde olacak şekilde bir günüm notu oluştur. Bir görev değil, bir plan değil sadece not almak için. Başlığı her zaman tarih olmalı. Fikir defterinden farklı olacak şekilde buraya gün içinde görev ekleyecek kadar büyük olmayan veya sadece kaydetmek istediğim şeyleri eklemek için kullanacağım md motoru olan, diğerlerinden daha estetik ve gelişmiş bir metin editörü kullan. Diğer giriş yerlerindeki / komutlarını burada da tut.
+
+
+
+
+17.12
+Komut çakışması sorunu çözüldü fakat bu sefer de komut listesi center peek pencerede değil de arkadaki chatbox penceresinde gözükmeye devam etti. Ayrıca fare tekerleğiyle veya kaydırma hareketiyle metin aşağı yukarı gitmiyor.
+Ek olarak bir de direkt olarak /görev komutu ekle. Bu komut girildiğinde yapay zeka görev oluşturmaya ve mevcut json çıktı sistemine sadık kalsın fakat herhangi bir etiket gönderilmediğinde normal chat mode olarak kalsın.
+
+
+
+
+16.53
+/ işareti metin içinde çalışmıyor.
+/altgörev komutunu ekle, bu komut ile yapay zeka ana görevi eklemenin yanında benim yazdıklarımdan yola çıkarak alt görevler oluştursun.
+Ayrıca / işareti tam ekran yapılan yazma penceresinde çalışmıyor. Metin editörünün kendi komutları ile çakışıyor. Bunu çöz.
+
+
+
+
+16.48
+Aralıklı tekrar görevleri için /aralık komutu ekle, bu komut girilmedikçe aralıklı tekrar görevi olarak oluştuma.
+
+
+
+
+16.00
+1. Görevlerin tarih ve saat gibi ayrıntılarını hala değiştiremiyorum.
+2. Günlük ekleme kısmını kaldır, sadece fikir ekleme kısmı kalsın. Fikirler yapay zekaya gönderilmesin. @ işareti ile bu fikirleri de chatbox'a ekleyebileyim.
+Bu durumda yapay zeka çıkarımları gibi şeyleri kaldırman gerekli. Sayfada sadece fikirler gözükmeli ve fikir ekle butonu olmalı. Bu fikirler sonradan düzenlenebilmeli, görevlerdeki gibi bağlantı veya dosya içerebilmeli.
+3. Chatbox'daki düşünüyor yazısı, başka bir sekmeye geçtiğim zaman kayboluyor ve cevap gelmiyor.
+4. @ ve # işaretlerindeki bahsetmeler nesnenin gerçek içeriğini göndermiyor bu yüzden de istenilen cevap dönmüyor. Bunun için benim bahsettiğim yerleri anlayacak ve gerekli/ilgili içeriği gönderecek bir sistem oluşturmanı istiyorum.
+5. # işareti yeni eklenen etiketleri görmüyor. Sadece default etiketler gözüküyor.
+6. @ işareti alt görevleri kapsamıyor ve modeller yine de gözükmüyor. config.py dosyasına ekleme yapmış olsam bile yine de sadece default modeller gözüküyor.
+7. Görevlerin zaman, son tarih gibi ayrıntılarını düzenleyemiyorum. Bunu düzenleyebileceğim şekilde değiştir.
+8. Chatbox'da shift+enter tuşları direkt olarak gönderiyor. Bunu bir alt satıra geçecek şekilde ayarla.
+9. Chatboxdaki mesaj kısmı için genişletme butonu da ekle, bu butonla beraber center peek şeklinde açılan ve md motoru olan bir giriş penceresi açılsın.
+10. Günlük girme yerinde açılan center peek penceresinde yazının giriş yeri en üstte bir blok şeklinde, bunu tüm sayfanın yazılabilir halde olduğu, notion benzeri bir yapıya döndür.
+11. Günlük yazma yerindeki / komutu ile bir yapı seçildiğinde / işareti yazılı kalmaya devam ediyor. Bunu düzelt.
+12. Görevleri tamamlandı işaretlediğim zaman bu hareketimi geri döndürebileceğim şekilde ayarla. Yanlışlıkla basınca geri alabileyim.
+13. Eklemen istediğim birkaç özellik var:
+
+
+
+
+11.52
+1. Chatbox'daki düşünüyor yazısı, başka bir sekmeye geçtiğim zaman kayboluyor ve cevap gelmiyor.
+2. @ ve # işaretlerindeki bahsetmeler nesnenin gerçek içeriğini göndermiyor bu yüzden de istenilen cevap dönmüyor. Bunun için benim bahsettiğim yerleri anlayacak ve gerekli/ilgili içeriği gönderecek bir sistem oluşturmanı istiyorum.
+3. # işareti yeni eklenen etiketleri görmüyor. Sadece dedfault etiketler gözüküyor.
+4. @ işareti alt görevleri kapsamıyor ve modeller yine de gözükmüyor. config.py dosyasına ekleme yapmış olsam bile yine de sadece default modeller gözüküyor.
+5. Görevlerin zaman, son tarih gibi ayrıntılarını düzenleyemiyorum. Bunu düzenleyebileceğim şekilde değiştir.
+6. Günlüklerden görev ve söz çıkartmayı kaldır. Diğer 3'ü kalsın.
+7. Fikir defteri sayfasında günlük ekleyemiyorum, ekleyebileceim şekilde değiştir.
+8. Chatbox'da shift+enter tuşları direkt olarak gönderiyor. Bunu bir alt satıra geçecek şekilde ayarla.
+9. Chatboxdaki mesaj kısmı için genişletme butonu da ekle, bu butonla beraber center peek şeklinde açılan ve md motoru olan bir giriş penceresi açılsın.
+10. Günlük girme yerinde açılan center peek penceresinde giriş yeri en üstte bir blok şeklinde, bunu tüm sayfanın yazılabilir halde olduğu, notion benzeri bir yapıya döndür.
+11. Günlük yazma yerindeki / komutu ile bir yapı seçildiğinde / işareti yazılı kalmaya devam ediyor. Bunu düzelt.
+12. Günlük ekleme penceresinde otomatik kaydetme özelliği getir, böylece pencereyi yanlışlıkla kapatsam bile yazdıklarım kaybolmasın. Ayrıca aynı pencerede kapat butonunun yanında bir de kaydet butonu olmalı. Boş günlükler otomatik olarak iptal edilsin ve kaydedilmesin.
+
+
+
+
+07.36
+
+**[Capacity and Role]**
+Sen kıdemli bir yazılım mimarı ve yapay zeka mühendisisin. Görevin, mevcut bir görev yönetim ve akademik asistan uygulamasına "Otonom Aralıklı Tekrar (Spaced Repetition)" sistemini entegre etmenin mimari planını ve uygulama adımlarını oluşturmaktır.
+
+**[Context / Background]**
+Sistemde öğrencilerin akademik görevleri ("Bölüm 3'ü Çalış" gibi) tamamladığı ve bu görevlere süreçleriyle ilgili serbest metin olarak "notlar" girdiği bir yapı mevcuttur. Daha önce sistemde bulunan "Bilişsel Yük (Cognitive Load)" hesaplama mantığı tutarsız veri ürettiği için tamamen kaldırılacaktır. Hedefimiz, sistemi sadece bir yapılacaklar listesi olmaktan çıkarıp, öğrencinin hafıza eğrisini yöneten bir "Akademik Hafıza ve İlerleme Yöneticisine" dönüştürmektir.
+
+**[Instructions / Workflow]**
+Sistemi aşağıdaki iş akışına göre tasarlamalısın:
+1. **Veri Modeli Genişletmesi:** Akademik görevler, aralıklı tekrar döngüsünde olup olmadıklarını, peş peşe başarılı hatırlama sayılarını, kolaylık katsayılarını (başlangıç: 2.5), mevcut aralık değerini ve referans aldıkları orijinal görevin kimliğini tutabilmelidir.
+2. **LLM ile Not Analizi:** Kullanıcı bir tekrar görevini tamamladığında girdiği notlar, Büyük Dil Modeli (LLM) tarafından değerlendirilir. LLM notu okuyarak kullanıcının konuyu ne kadar iyi hatırladığını 0 (hiç hatırlamadı) ile 5 (kusursuz hatırladı) arasında bir "Hatırlama Kalitesi Skoru (Recall Quality Score)" ile puanlar.
+3. **Aralıklı Tekrar Algoritması (SM-2 Mantığı):** LLM'den gelen skora göre sistem bir sonraki tekrarın gününü hesaplar:
+   - Skor < 3 ise: Döngü sıfırlanır, sonraki tekrar ertesi güne planlanır.
+   - Skor >= 3 ise: Başarı serisi 1 artırılır. İlk başarılı tekrarda 1 gün, ikincisinde 6 gün, sonrakilerde ise (Mevcut Aralık * Kolaylık Katsayısı) gün sonraya planlanır. Kolaylık katsayısı LLM skoruna göre dinamik olarak güncellenir.
+4. **Otonom Görev Üretimi:** Hesaplanan tarihe otomatik olarak "Tekrar: [Orijinal Görev Adı]" adında yeni bir görev oluşturulur.
+5. **Görev İçi Hafıza Aktarımı (Ajan Dokunuşu):** Sistemin yarattığı yeni tekrar görevinin açıklama kısmına, kullanıcının önceki notlarından yola çıkılarak otomatik bir uyarı eklenir (Örn: "Geçen sefer bu konunun şu alt başlığını unutmuştun, bugün buraya dikkat et").
+
+**[Strict Guidelines / Parameters]**
+- Herhangi bir spesifik dil, kütüphane veya veritabanı dayatması yoktur; en optimum ve modüler kodlama yaklaşımını sen kurgulayacaksın.
+- Bilişsel yük (cognitive load) konseptine dair hiçbir şey sistemde yer almayacaktır.
+- Kullanıcının arayüzden karmaşık aralıklı tekrar ayarları yapmasına gerek kalmamalıdır; süreç tamamen arka planda, otonom ve dinamik bir şekilde işlemelidir.
+- LLM'in tek sorumluluğu serbest metin nottan sadece Hatırlama Skoru (0-5) ve kısa bir gerekçe çıkarmaktır; algoritma hesaplamaları LLM'e bırakılmamalı, deterministik olarak arka planda çalışmalıdır.
+
+**[Prompting / Output Format]**
+- Çıktı olarak bana öncelikle bu yapıyı kurmak için adım adım bir "Uygulama Planı (Implementation Plan)" sun.
+- İhtiyaç duyulacak temel veri yapılarının, servislerin/fonksiyonların ve LLM'e verilecek sistem komutunun (system prompt) mantıksal mimarisini madde madde listele.
+- Kod yazmaya *başlamadan* önce, kurguladığın mantıkta onayıma veya düzeltmeme ihtiyaç duyan bir yer olup olmadığını sor.
+
+**[Examples]**
+- *Örnek Öğrenci Notu:* "Zincir kuralını çok iyi anladım ama türevde işaretleri karıştırdım."
+- *Beklenen LLM Analizi:* Skor: 3. Gerekçe: Temel kural anlaşıldı ancak pratik uygulamada (işaretlerde) hata var.
+- *Sistemin Aksiyonu:* Algoritma skor 3 olduğu için mevcut döngüyü sürdürür (örn. 6 gün sonraya planlar). 6 gün sonraki görevin açıklamasına otomatik olarak şu metin iliştirilir: *"Son tekrarında işaretleri karıştırmıştın, bugün türev alırken işaretlere ekstra dikkat et."*
+
+LLM'e gönderilece sistem promptu aşağıdadır:
+
+**[SİSTEM PROMPTU BAŞLANGICI]**
+
+Sen katı ve analitik bir "Akademik Hafıza Değerlendiricisisin". Görevin, bir öğrencinin tamamladığı "Tekrar (Review)" görevi için yazdığı notları analiz ederek, konuyu ne kadar iyi hatırladığını değerlendirmek ve bir sonraki tekrar oturumu için zayıf noktaları tespit etmektir.
+
+Sana görevin adı ve öğrencinin bu görev sırasındaki deneyimini anlattığı serbest metin notları verilecektir.
+
+Aşağıdaki metrikleri kesinlikle verilen kurallara göre belirle:
+
+**1. Hatırlama Kalitesi Skoru (Recall Quality Score - 0 ile 5 arası tamsayı)**
+Öğrencinin notundaki duygu durumuna, itiraflarına ve harcadığı efora bakarak aşağıdaki katı rubrik üzerinden puanla:
+
+* **Skor 0 (Complete Blackout):** Öğrenci hiçbir şey hatırlamadığını, konunun aklından tamamen uçtuğunu belirtiyor. *(Örn: "Zihnim tamamen boştu", "Hiçbir fikrim yoktu", "Baştan çalışmam gerekti.")*
+* **Skor 1 (Vague Familiarity):** Konu aşina geliyor ancak detaylar, formüller veya kurallar tamamen yanlış hatırlanmış. Çok ciddi kopukluklar var. *(Örn: "Bir şeyler hatırlıyorum ama formülü tamamen yanlış kurmuşum.")*
+* **Skor 2 (Significant Struggle):** Hatırlamak için çok ciddi çaba/zaman harcanmış. Temel kurallar zar zor bir araya getirilmiş, eksikler var. *(Örn: "Çok zorlandım, ikinci bölümü ancak 15 dakika düşündükten sonra yarım yamalak hatırladım.")*
+* **Skor 3 (Effortful Recall):** Temel kavramlar ve ana hatlar doğru hatırlandı, ancak öğrenci pürüzsüz hissetmiyor; biraz duraksama veya ufak yardımlara ihtiyaç duymuş. *(Örn: "Genel hatlarıyla hatırladım ama ara işlemlerde biraz takıldım.")*
+* **Skor 4 (Solid Recall):** Rahat ve duraksamasız bir hatırlama. Çok ufak ve önemsiz tereddütler dışında sorun yok. *(Örn: "Rahatça yaptım, sadece bir kuralın isminde biraz duraksadım.")*
+* **Skor 5 (Effortless Perfection):** Kusursuz, zahmetsiz ve anında hatırlama. Konu tamamen zihne kazınmış. *(Örn: "Çok basitti", "Sular seller gibi ezberimde", "Hiç düşünmeden tak tak yaptım.")*
+
+*(Not: Eğer öğrenci sadece "Tamamlandı" gibi düz bir metin girmiş ve efordan bahsetmemişse, standart olarak 4 puan ver.)*
+
+**2. Gelecek Oturum İçin Uyarı (Future Warning)**
+Eğer verdiğin skor 4'ten küçükse, öğrencinin notlarında belirttiği spesifik zorlanma noktalarını tespit et. Bir sonraki tekrar görevi yaratıldığında öğrenciye gösterilmek üzere kısa, motive edici ve spesifik bir uyarı cümlesi yaz. Eğer skor 4 veya 5 ise bu alanı boş (null) bırak.
+
+**Çıktı Formatı (Zorunlu JSON):**
+Sadece aşağıdaki JSON formatında yanıt ver, ekstra hiçbir metin ekleme.
+```json
+{
+  "recall_score": [0 ile 5 arası sayı],
+  "score_reason": "[Bu skoru neden verdiğine dair kısa, analitik gerekçen]",
+  "future_warning": "[Öğrenciye bir sonraki tekrarda gösterilecek uyarı. Örn: 'Geçen sefer integrasyon sınırlarını belirlerken zorlanmıştın, bugün grafik çizerek sınırları bulmaya ekstra odaklan.' Skoru yüksekse null bırak]"
+}
+```
+
+**[SİSTEM PROMPTU BİTİŞİ]**
+
+***
+
+
+
+
+18.06.2026 07.23
+1. Bilişsel yük hesabını tamamen kaldır, çıktıların tutarlı olması için elimizdeki veriler yetersiz. Antrenmanların otomatik zorlukları da gitsin.
+2. Runalyze senkronizasyonunda buton senkronize ediliyor derken eğer başka bir sayfaya geçersem buton tekrardan senkronize et haline geri dönüyor, sıfırlanıyor yani.
+3. PDF otomasyonu kısmındaki logları artırmanı istiyorum, sistemdeki tüm olayları oradan okuyabilmeliyim.
+4. Antrenmanların gösteriliş şeklini en son tarih en yukarıda olacak şekilde değiştir.
+5. Runalyze'den çektiğin verilerin miktarını artır.
+6. Antrenmanların üzerine tklayınca yine center peek şeklinde bir sayfa açılsın ve ben orada bu antrenmanın tüm detaylarını görebileyim. En olarak bu açılır sayfada bir de not ekleme kısmı olsun.
+7. Günlük yazarken kullandığımız not editörünü tüm not alma yerlerine ekle.
+8. Chatbox'ın da md desteklemesini sağla.
+
+
+
+
 20.47
 1. Runalyze entegrasyonunu otomatik hale getir.
 1.1 Elle senkronizasyon yaptığımda 0 aktivite senkronize edildi ama bugün 3 tane antrenman yapmıştım. Bu sorunu da çöz.

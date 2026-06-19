@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "getdashboarddata_should_return_tasks_and_cognitive_load",
+    "description": "Verify that the GET /dashboard_data endpoint returns today's tasks sorted by deadline along with cognitive capacity information for the dashboard."
+  },
+  {
+    "id": "TC002",
+    "title": "postdailynotes_should_save_and_autosave_daily_note",
+    "description": "Verify that the POST /daily_notes endpoint correctly saves the daily note content and that auto-save updates are reflected properly."
+  },
+  {
+    "id": "TC003",
+    "title": "postchat_should_process_messages_and_slash_commands",
+    "description": "Verify that the POST /chat endpoint accepts user messages including slash commands, processes them, and returns streaming response tokens."
+  },
+  {
+    "id": "TC004",
+    "title": "postupload_should_accept_pdf_files_and_create_jobs",
+    "description": "Verify that the POST /upload endpoint accepts PDF files with optional processing instructions, initiates processing jobs, and the jobs appear in history."
+  },
+  {
+    "id": "TC005",
+    "title": "getpdfjobs_should_return_pdf_job_history_with_statuses",
+    "description": "Verify that the GET /pdf_jobs endpoint returns the list of past PDF processing jobs with correct status badges and updated entries."
+  },
+  {
+    "id": "TC006",
+    "title": "getusage_should_return_api_cost_meters_for_pdf_and_agent",
+    "description": "Verify that the GET /usage endpoint returns accurate API cost metrics for both PDF and agent categories."
+  },
+  {
+    "id": "TC007",
+    "title": "getlogsstream_should_stream_live_system_logs",
+    "description": "Verify that the GET /logs/stream endpoint streams live system logs continuously and supports expansion to modal view for inspection."
+  },
+  {
+    "id": "TC008",
+    "title": "gettasks_should_return_all_tasks_with_filters",
+    "description": "Verify that the GET /tasks endpoint returns all academic and daily tasks and supports filtering by category and status."
+  },
+  {
+    "id": "TC009",
+    "title": "posttasks_should_create_new_task",
+    "description": "Verify that the POST /tasks endpoint creates a new academic or daily task with provided details and the task appears in the task list."
+  },
+  {
+    "id": "TC010",
+    "title": "postworkoutsupload_should_import_workouts_from_files",
+    "description": "Verify that the POST /workouts/upload endpoint accepts JSON, CSV, or FIT files, imports workouts correctly, and adds them to the workout plan."
+  }
+]

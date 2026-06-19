@@ -1,0 +1,1323 @@
+[
+  {
+    "id": "TC001",
+    "title": "Send a chat message and see the response stream",
+    "description": "This verifies that a user can send a message in the chat terminal and see the assistant response appear progressively in the conversation.",
+    "category": "Chat Terminal",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the chat terminal"
+      },
+      {
+        "type": "action",
+        "description": "Type a message into the chat input"
+      },
+      {
+        "type": "action",
+        "description": "Send the message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a new conversation message appears"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify streaming response content appears"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Upload a PDF and see it appear in job history",
+    "description": "Verifies that a user can upload a PDF on the processing page and see the new job appear in the history list.",
+    "category": "PDF Automation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /pdf"
+      },
+      {
+        "type": "action",
+        "description": "Upload a PDF file"
+      },
+      {
+        "type": "action",
+        "description": "Enter optional processing instructions"
+      },
+      {
+        "type": "action",
+        "description": "Start the upload"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new job appears in job history"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Move between the main pages from the dashboard",
+    "description": "This verifies that a user can navigate between the five main pages from the dashboard and see the active page update correctly.",
+    "category": "Navigation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link for the PDF page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the PDF page is displayed as the active page"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link for the task management page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task management page is displayed as the active page"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link for the workout page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workout page is displayed as the active page"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link for the ideas notebook page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the ideas notebook page is displayed as the active page"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link for the dashboard page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dashboard page is displayed as the active page"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Review today's workload on the dashboard",
+    "description": "Verifies that a user can open the dashboard and see today's workload summary and task list as the starting point for daily planning.",
+    "category": "Günüm",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify today's workload summary is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify today's tasks are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Create a task from the task manager",
+    "description": "Verifies that a user can create a new academic or daily task and see it appear in the task list.",
+    "category": "Task Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /manage"
+      },
+      {
+        "type": "action",
+        "description": "Create a new task with a unique title and valid details"
+      },
+      {
+        "type": "action",
+        "description": "Save the task"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new task appears in the task list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Write a daily note and keep it saved while navigating",
+    "description": "This verifies that a user can enter a daily note on the dashboard and see it remain saved after continuing to another page and returning.",
+    "category": "Dashboard and Daily Note",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the daily note editor"
+      },
+      {
+        "type": "action",
+        "description": "Type a short daily note into the editor"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the auto-save indicator shows that the note is saved"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link for the task management page"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link for the dashboard page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the daily note content is still present"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Save a daily note while using the dashboard",
+    "description": "Verifies that a user can write a daily note on the dashboard and have the note remain available after switching pages.",
+    "category": "Günüm",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the daily note with a short planning update"
+      },
+      {
+        "type": "action",
+        "description": "Switch to another page using the navigation"
+      },
+      {
+        "type": "action",
+        "description": "Return to the dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the daily note is still present"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the note is available without losing the entered content"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Create a task with details and subtasks",
+    "description": "This verifies that a user can create a task in task management and see it saved with notes and AI-generated subtasks.",
+    "category": "Dashboard and Daily Note",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /manage"
+      },
+      {
+        "type": "action",
+        "description": "Create a new task"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the task title with a unique name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in task notes"
+      },
+      {
+        "type": "action",
+        "description": "Add a supporting material link"
+      },
+      {
+        "type": "action",
+        "description": "Generate AI subtasks"
+      },
+      {
+        "type": "action",
+        "description": "Save the task"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new task appears in the task list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task shows notes and subtasks"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Review today’s workload and filter the task list",
+    "description": "This verifies that a user can open the dashboard, filter today’s tasks by time and status, and see the task list update.",
+    "category": "Dashboard and Daily Note",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the task list"
+      },
+      {
+        "type": "action",
+        "description": "Select the time filter for today"
+      },
+      {
+        "type": "action",
+        "description": "Select the status filter for completed items"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task list reflects the selected filters"
+      },
+      {
+        "type": "action",
+        "description": "Select the status filter for pending items"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task list updates to show pending work"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Update and complete a task",
+    "description": "Verifies that a user can edit an existing task and mark it complete with the updated status shown in the list.",
+    "category": "Task Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /manage"
+      },
+      {
+        "type": "action",
+        "description": "Create a new task with a unique title and valid details"
+      },
+      {
+        "type": "action",
+        "description": "Open the task for editing"
+      },
+      {
+        "type": "action",
+        "description": "Update the task details"
+      },
+      {
+        "type": "action",
+        "description": "Save the changes"
+      },
+      {
+        "type": "action",
+        "description": "Mark the task as complete"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task is shown as completed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated task information is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Switch between the five main pages from the navigation",
+    "description": "Verifies that a user can move between the main pages from the shared navigation without losing access to the app sections.",
+    "category": "Günüm",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the PDF page"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the task management page"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the workouts page"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the ideas page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify each page is reachable from the navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the app sections remain available across navigation"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Mark a task complete and review it on the dashboard",
+    "description": "This verifies that a user can complete a task in task management and then find the completed task on the dashboard.",
+    "category": "Dashboard and Daily Note",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /manage"
+      },
+      {
+        "type": "action",
+        "description": "Create a new task"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the task title with a unique name"
+      },
+      {
+        "type": "action",
+        "description": "Save the task"
+      },
+      {
+        "type": "action",
+        "description": "Mark the task complete"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link for the dashboard page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the completed task is visible on the dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task is shown as completed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Filter tasks on the dashboard",
+    "description": "Verifies that a user can narrow the dashboard task list using task filters and see the list update accordingly.",
+    "category": "Günüm",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Select a task filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task list is narrowed to matching tasks"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Refresh the PDF job list and review updated statuses",
+    "description": "Verifies that a user can refresh PDF processing history and see the latest job entries and status badges.",
+    "category": "PDF Automation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /pdf"
+      },
+      {
+        "type": "action",
+        "description": "Refresh the PDF job list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updated job entries are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify job status badges are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Add task notes, materials, and subtasks",
+    "description": "Verifies that a user can enrich a task with notes, a material link, and generated AI subtasks and see all additions attached to the task.",
+    "category": "Task Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /manage"
+      },
+      {
+        "type": "action",
+        "description": "Create a new project task with a unique title and valid details"
+      },
+      {
+        "type": "action",
+        "description": "Open the task details"
+      },
+      {
+        "type": "action",
+        "description": "Add a note to the task"
+      },
+      {
+        "type": "action",
+        "description": "Add a material link to the task"
+      },
+      {
+        "type": "action",
+        "description": "Generate AI subtasks for the task"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the note and material are attached to the task"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify subtasks are added under the task"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Create a new idea",
+    "description": "Verifies that a user can create a new idea and see it appear in the notebook.",
+    "category": "Ideas Notebook",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /ideas"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to add a new idea"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a unique idea title"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the idea content"
+      },
+      {
+        "type": "action",
+        "description": "Save the idea"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new idea appears in the notebook"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Create a workout and mark it complete",
+    "description": "This verifies that a user can create a workout, save it, and mark it as completed in the workout manager.",
+    "category": "workouts",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /workouts"
+      },
+      {
+        "type": "action",
+        "description": "Create a new workout"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workout title with a unique name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workout details"
+      },
+      {
+        "type": "action",
+        "description": "Save the workout"
+      },
+      {
+        "type": "action",
+        "description": "Mark the workout complete"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workout appears in the completed workouts view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workout is no longer only in the planned view"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC018",
+    "title": "Use a slash command in chat",
+    "description": "This verifies that a user can send a slash command in the chat terminal and receive command-aware assistant output.",
+    "category": "Chat Terminal",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the chat terminal"
+      },
+      {
+        "type": "action",
+        "description": "Type a slash command into the chat input"
+      },
+      {
+        "type": "action",
+        "description": "Send the message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the command appears in the conversation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a command-aware response is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC019",
+    "title": "Create a workout on the training page",
+    "description": "Verifies that a user can create a workout with duration and effort details and see it added to the planned workouts list.",
+    "category": "Workout Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /workouts"
+      },
+      {
+        "type": "action",
+        "description": "Create a new workout with valid duration and effort details"
+      },
+      {
+        "type": "action",
+        "description": "Save the workout"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workout appears in the planned workouts list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC020",
+    "title": "Create and edit an idea with rich text and attachments",
+    "description": "This verifies that a user can create a new idea, edit its rich text content, attach files, and keep the idea saved.",
+    "category": "ideas",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /ideas"
+      },
+      {
+        "type": "action",
+        "description": "Create a new idea"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the idea title with a unique name"
+      },
+      {
+        "type": "action",
+        "description": "Type rich text content into the editor"
+      },
+      {
+        "type": "action",
+        "description": "Attach a file to the idea"
+      },
+      {
+        "type": "action",
+        "description": "Save the idea"
+      },
+      {
+        "type": "action",
+        "description": "Open the idea for editing"
+      },
+      {
+        "type": "action",
+        "description": "Update the rich text content"
+      },
+      {
+        "type": "action",
+        "description": "Save the changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the idea appears in the ideas list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated rich text content is preserved"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC021",
+    "title": "Edit and complete a workout",
+    "description": "Verifies that a user can update a workout in the modal editor and then mark it complete with the status reflected in the workout views.",
+    "category": "Workout Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /workouts"
+      },
+      {
+        "type": "action",
+        "description": "Create a new workout with valid duration and effort details"
+      },
+      {
+        "type": "action",
+        "description": "Open the workout editor"
+      },
+      {
+        "type": "action",
+        "description": "Update the workout details"
+      },
+      {
+        "type": "action",
+        "description": "Save the changes"
+      },
+      {
+        "type": "action",
+        "description": "Mark the workout as complete"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workout is shown in the completed view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated workout information is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC022",
+    "title": "Download generated PDF artifacts",
+    "description": "Verifies that a user can download artifacts generated for a PDF job from the history view.",
+    "category": "PDF Automation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /pdf"
+      },
+      {
+        "type": "action",
+        "description": "Open a completed PDF job"
+      },
+      {
+        "type": "action",
+        "description": "Download the job artifacts"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the downloadable artifacts are available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC023",
+    "title": "Attach a file to a chat message",
+    "description": "This verifies that a user can attach a PDF or image to a chat message and see the attachment included in the conversation.",
+    "category": "Chat Terminal",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the chat terminal"
+      },
+      {
+        "type": "action",
+        "description": "Attach a PDF or image file to the chat"
+      },
+      {
+        "type": "action",
+        "description": "Type a message into the chat input"
+      },
+      {
+        "type": "action",
+        "description": "Send the message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the attachment is included in the conversation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the message with attachment appears in the chat thread"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC024",
+    "title": "Import workouts from a file",
+    "description": "Verifies that a user can import workout data from a supported file and see the imported workouts added to the plan.",
+    "category": "Workout Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /workouts"
+      },
+      {
+        "type": "action",
+        "description": "Import a supported workout file"
+      },
+      {
+        "type": "action",
+        "description": "Start the import"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify imported workouts are added to the workout list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC025",
+    "title": "Edit an idea's title and content",
+    "description": "Verifies that a user can open an existing idea, update its title and rich text content, and save the changes.",
+    "category": "Ideas Notebook",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /ideas"
+      },
+      {
+        "type": "action",
+        "description": "Click an idea card"
+      },
+      {
+        "type": "action",
+        "description": "Update the idea title"
+      },
+      {
+        "type": "action",
+        "description": "Update the rich text content"
+      },
+      {
+        "type": "action",
+        "description": "Save the idea changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the edited idea is shown with the updated content"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC026",
+    "title": "Delete a task from the task manager",
+    "description": "Verifies that a user can delete a task and no longer see it in the task list afterward.",
+    "category": "Task Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /manage"
+      },
+      {
+        "type": "action",
+        "description": "Create a new task with a unique title and valid details"
+      },
+      {
+        "type": "action",
+        "description": "Delete the task"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task is removed from the list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC027",
+    "title": "Switch chat sessions and continue the conversation",
+    "description": "This verifies that a user can switch between chat sessions and keep working in the selected session.",
+    "category": "Chat Terminal",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the chat terminal"
+      },
+      {
+        "type": "action",
+        "description": "Switch to another chat session"
+      },
+      {
+        "type": "action",
+        "description": "Type a message into the chat input"
+      },
+      {
+        "type": "action",
+        "description": "Send the message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected session is shown as active"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new message appears in the selected session"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC028",
+    "title": "Open the live log view for PDF processing",
+    "description": "Verifies that a user can watch live system logs and expand the log panel to a larger modal view for inspection.",
+    "category": "PDF Automation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /pdf"
+      },
+      {
+        "type": "action",
+        "description": "Watch the live system logs"
+      },
+      {
+        "type": "action",
+        "description": "Expand the log panel into a modal view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the live logs are displayed in the expanded view"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC029",
+    "title": "Export a chat session as markdown",
+    "description": "This verifies that a user can export the current chat conversation as markdown from the chat terminal.",
+    "category": "Chat Terminal",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the chat terminal"
+      },
+      {
+        "type": "action",
+        "description": "Export the current chat session as markdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an export confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the exported conversation is available to download"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC030",
+    "title": "Review PDF and agent usage meters",
+    "description": "Verifies that a user can view usage meters for both PDF and agent activity and compare the two channels.",
+    "category": "PDF Automation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /pdf"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify PDF usage metrics are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify agent usage metrics are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC031",
+    "title": "Attach a file to an idea",
+    "description": "Verifies that a user can upload a file attachment to an idea and see the attachment listed on the idea.",
+    "category": "Ideas Notebook",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /ideas"
+      },
+      {
+        "type": "action",
+        "description": "Click an idea card"
+      },
+      {
+        "type": "action",
+        "description": "Upload a file attachment"
+      },
+      {
+        "type": "action",
+        "description": "Save the idea changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the idea shows the attached file"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC032",
+    "title": "Edit an existing workout plan",
+    "description": "This verifies that a user can open a workout from the planned list, edit its details, and save the changes.",
+    "category": "workouts",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /workouts"
+      },
+      {
+        "type": "action",
+        "description": "Create a new workout"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workout title with a unique name"
+      },
+      {
+        "type": "action",
+        "description": "Save the workout"
+      },
+      {
+        "type": "action",
+        "description": "Open the workout for editing"
+      },
+      {
+        "type": "action",
+        "description": "Update the workout details"
+      },
+      {
+        "type": "action",
+        "description": "Save the changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workout shows the updated details"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workout remains in the planned list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC033",
+    "title": "Edit rich text content in an idea",
+    "description": "Verifies that a user can open an idea, update its rich text content, and see the edited content preserved.",
+    "category": "Fikir Defteri",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /ideas"
+      },
+      {
+        "type": "action",
+        "description": "Create a new idea with a unique title and initial content"
+      },
+      {
+        "type": "action",
+        "description": "Open the idea for editing"
+      },
+      {
+        "type": "action",
+        "description": "Update the rich text content"
+      },
+      {
+        "type": "action",
+        "description": "Save the idea"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the edited content is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC034",
+    "title": "Add a material link to an idea",
+    "description": "Verifies that a user can attach a material link to an idea and see it stored with that idea.",
+    "category": "Ideas Notebook",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /ideas"
+      },
+      {
+        "type": "action",
+        "description": "Click an idea card"
+      },
+      {
+        "type": "action",
+        "description": "Add a material link"
+      },
+      {
+        "type": "action",
+        "description": "Save the idea changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the idea shows the saved material link"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC035",
+    "title": "Delete an idea from the notebook",
+    "description": "Verifies that a user can delete an idea and no longer see it in the ideas list afterward.",
+    "category": "Fikir Defteri",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /ideas"
+      },
+      {
+        "type": "action",
+        "description": "Create a new idea with a unique title and initial content"
+      },
+      {
+        "type": "action",
+        "description": "Delete the idea"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the idea is removed from the list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC036",
+    "title": "Import a workout from a file",
+    "description": "This verifies that a user can import a workout file into the workout manager and see the imported workout added to the list.",
+    "category": "workouts",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /workouts"
+      },
+      {
+        "type": "action",
+        "description": "Import a workout file"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the import to finish"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the imported workout appears in the workout list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workout is available in the planned view"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC037",
+    "title": "Compare workload information on the dashboard",
+    "description": "This verifies that a user can review the dashboard’s workload and cognitive capacity information together to assess daily planning load.",
+    "category": "Dashboard and Daily Note",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the workload summary section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify cognitive capacity information is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify workload comparison information is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC038",
+    "title": "Delete an idea",
+    "description": "Verifies that a user can delete an idea and that it is removed from the notebook.",
+    "category": "Ideas Notebook",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /ideas"
+      },
+      {
+        "type": "action",
+        "description": "Click an idea card"
+      },
+      {
+        "type": "action",
+        "description": "Delete the idea"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the idea is removed from the notebook"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC039",
+    "title": "Review planned and completed workout views",
+    "description": "This verifies that a user can compare planned and completed workouts from the workout page.",
+    "category": "workouts",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /workouts"
+      },
+      {
+        "type": "action",
+        "description": "Open the planned workouts view"
+      },
+      {
+        "type": "action",
+        "description": "Open the completed workouts view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify planned workouts are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify completed workouts are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC040",
+    "title": "Validate empty task fields before saving",
+    "description": "This verifies that task creation is blocked until required task fields are filled and validation feedback is shown.",
+    "category": "Dashboard and Daily Note",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /manage"
+      },
+      {
+        "type": "action",
+        "description": "Create a new task"
+      },
+      {
+        "type": "action",
+        "description": "Save the task without filling required fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task is not created"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC041",
+    "title": "Show an empty notebook state",
+    "description": "Verifies that the ideas page displays an empty state when no ideas exist.",
+    "category": "Ideas Notebook",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /ideas"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is visible"
+      }
+    ],
+    "priority": "Low"
+  }
+]

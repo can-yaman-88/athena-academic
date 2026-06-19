@@ -33,14 +33,18 @@ from config import settings
 from core.commands import COMMANDS, help_text, parse_command
 from core.prompt_templates import (
     CHAT_SYSTEM_PROMPT,
-    ROUTER_SYSTEM_PROMPT,
+    IDEA_EXTRACTION_SYSTEM_PROMPT,
+    SESSION_EXTRACTION_SYSTEM_PROMPT,
     TASK_EXTRACTION_SYSTEM_PROMPT,
     WORKOUT_PLAN_SYSTEM_PROMPT,
+    IdeaExtractionList,
     RouteDecision,
+    SessionExtraction,
     TaskExtractionList,
     WorkoutPlan,
 )
 from core.schemas import (
+    AcademicSession,
     AcademicSubtype,
     Material,
     Note,
@@ -60,6 +64,8 @@ _TOOL_FOR_ROUTE: dict[RouteTarget, Optional[str]] = {
     "pdf_tool_node": "process_pdf",
     "task_tool_node": "add_task",
     "workout_tool_node": "log_workout",
+    "session_node": "add_session",
+    "idea_extractor_node": "extract_ideas",
 }
 
 _PDF_PATH_RE = re.compile(r"\S+\.pdf\b", re.IGNORECASE)
@@ -148,6 +154,16 @@ def _default_workout_extractor_llm(callbacks: Optional[list] = None) -> Any:
     return _make_structured_llm(llm, WorkoutPlan)
 
 
+def _default_session_extractor_llm(callbacks: Optional[list] = None) -> Any:
+    llm = _make_llm(settings.router_model, settings.router_max_tokens, temperature=0, callbacks=callbacks)
+    return _make_structured_llm(llm, SessionExtraction)
+
+
+def _default_idea_extractor_llm(callbacks: Optional[list] = None) -> Any:
+    llm = _make_llm(settings.router_model, settings.router_max_tokens, temperature=0, callbacks=callbacks)
+    return _make_structured_llm(llm, IdeaExtractionList)
+
+
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
@@ -160,23 +176,16 @@ def _last_human_message(messages: list[Any]) -> str:
     return ""
 
 
-def _resolve_deadline(value: Optional[str], now: datetime) -> datetime:
+def _resolve_deadline(value: Optional[str], now: datetime) -> Optional[datetime]:
     """Turn the extractor's optional ISO deadline into a concrete datetime.
-
-    Falls back to end-of-day today when the model gives no parseable deadline,
-    so a Task (whose ``deadline`` is required) can always be constructed.
+    Returns None if missing or unparseable.
     """
     if value:
         try:
             return datetime.fromisoformat(value)
         except ValueError:
-            logger.warning("unparseable deadline %r; defaulting to end of today", value)
-    return now.replace(
-        hour=settings.default_deadline_hour,
-        minute=settings.default_deadline_minute,
-        second=0,
-        microsecond=0,
-    )
+            logger.warning("unparseable deadline %r; returning None", value)
+    return None
 
 
 def _attachments_text(state: AthenaState) -> str:
@@ -206,21 +215,21 @@ def _resolve_target_task(
             hint = target_hint.lower()
             hits = [t for t in cands if hint in t.title.lower()]
             if hits:
-                return sorted(hits, key=lambda t: t.deadline)[0]
-        return sorted(cands, key=lambda t: t.deadline)[0]
+                return sorted(hits, key=lambda t: t.deadline or datetime.max.astimezone())[0]
+        return sorted(cands, key=lambda t: t.deadline or datetime.max.astimezone())[0]
 
     # Search among all tasks (including subtasks) if explicitly hinted, otherwise just top-level
     cands_pool = tasks if target_hint else [t for t in tasks if t.parent_id is None]
 
     if target_date is not None:
-        return _match([t for t in cands_pool if t.deadline.date() == target_date])
+        return _match([t for t in cands_pool if t.deadline and t.deadline.date() == target_date])
 
     today = now.date()
-    todays = [t for t in cands_pool if t.deadline.date() == today]
+    todays = [t for t in cands_pool if t.deadline and t.deadline.date() == today]
     hit = _match(todays)
     if hit:
         return hit
-    future = [t for t in cands_pool if t.deadline >= now]
+    future = [t for t in cands_pool if not t.deadline or t.deadline >= now]
     return _match(future)
 
 
@@ -268,10 +277,10 @@ def _resolve_task_by_name(
         return None
     name = (name or "").strip().lower()
     if not name:
-        return sorted(cands, key=lambda t: t.deadline)[0]
+        return sorted(cands, key=lambda t: t.deadline or datetime.max.astimezone())[0]
     exact = [t for t in cands if name == t.title.lower() or name in t.title.lower()]
     if exact:
-        return sorted(exact, key=lambda t: t.deadline)[0]
+        return sorted(exact, key=lambda t: t.deadline or datetime.max.astimezone())[0]
     titles = {t.title.lower(): t for t in cands}
     close = difflib.get_close_matches(name, list(titles), n=1, cutoff=0.3)
     return titles[close[0]] if close else None
@@ -287,30 +296,25 @@ def router_node(state: AthenaState, *, router_llm: Any) -> dict[str, Any]:
     """
     user_text = _last_human_message(state["messages"])
 
-    command, _remainder = parse_command(user_text)
+    command, _remainder, n_val = parse_command(user_text)
     if command is not None:
         return {
             "route": command.route,
             "active_tool": _TOOL_FOR_ROUTE.get(command.route),
             "command": command.name,
+            "n_val": n_val,
         }
 
-    decision: RouteDecision = router_llm.invoke(
-        [
-            SystemMessage(content=ROUTER_SYSTEM_PROMPT),
-            HumanMessage(content=user_text),
-        ]
-    )
     return {
-        "route": decision.next_node,
-        "active_tool": _TOOL_FOR_ROUTE[decision.next_node],
-        "cognitive_load_status": decision.cognitive_load_status,
+        "route": "chat_node",
+        "active_tool": _TOOL_FOR_ROUTE["chat_node"],
+        "cognitive_load_status": None,
         "command": None,
     }
 
 
-def chat_node(
-    state: AthenaState, *, chat_llm: Any, chroma: Any = None
+async def chat_node(
+    state: AthenaState, *, chat_llm: Any = None, chroma: Any = None, callbacks: Any = None
 ) -> dict[str, Any]:
     """Answer conversationally, grounded in retrieved document context."""
     # /yardim is deterministic — list commands without an LLM call.
@@ -344,11 +348,11 @@ def chat_node(
         try:
             from core.graph import _make_llm
             # Attempt to use the overridden model
-            llm_to_use = _make_llm(override, settings.chat_max_tokens)
+            llm_to_use = _make_llm(override, settings.chat_max_tokens, callbacks=callbacks)
         except Exception as e:
             logger.warning("Could not override model with %s: %s", override, e)
 
-    response = llm_to_use.invoke([SystemMessage(content=system), *state["messages"]])
+    response = await llm_to_use.ainvoke([SystemMessage(content=system), *state["messages"]])
     return {
         "messages": [response],
         "retrieved_context": context or None,
@@ -385,7 +389,7 @@ def _materials_from_attachments(state: AthenaState) -> list[Material]:
 
 
 async def _generate_subtasks(
-    parent: Task, context_text: str, subtask_llm: Any, now: datetime
+    parent: Task, context_text: str, subtask_llm: Any, now: datetime, max_subtasks: Optional[int] = None
 ) -> list[Task]:
     """Break an academic task into independent subtask rows via the LLM."""
     from core.subtasks import SUBTASK_SYSTEM_PROMPT, SubtaskPlan  # local import
@@ -396,19 +400,28 @@ async def _generate_subtasks(
         f"Deadline: {parent.deadline.isoformat()}\n\n"
         f"Material/spec (may be empty):\n{context_text or '(none)'}"
     )
+    limit_text = (
+        f"- Produce up to {max_subtasks} subtasks; each must be a single actionable unit with a clear title."
+        if max_subtasks
+        else "- Produce 3–8 subtasks; each must be a single actionable unit with a clear title."
+    )
     plan: Optional[SubtaskPlan] = await subtask_llm.ainvoke(
         [
-            SystemMessage(content=SUBTASK_SYSTEM_PROMPT.format(now=now.isoformat(timespec="minutes"))),
+            SystemMessage(content=SUBTASK_SYSTEM_PROMPT.format(now=now.isoformat(timespec="minutes"), limit_text=limit_text)),
             HumanMessage(content=payload),
         ]
     )
     subs: list[Task] = []
     for item in (plan.subtasks if plan else []):
         deadline = _resolve_deadline(item.deadline, now)
+        if deadline and parent.deadline:
+            deadline = min(deadline, parent.deadline)
+        elif not deadline and parent.deadline:
+            deadline = parent.deadline
         subs.append(
             Task(
                 title=item.title,
-                deadline=min(deadline, parent.deadline),
+                deadline=deadline,
                 discipline=parent.discipline,
                 estimated_hours=item.estimated_hours or settings.default_estimated_hours,
                 category=TaskCategory.ACADEMIC,
@@ -425,12 +438,25 @@ async def task_tool_node(
     task_extractor_llm: Any = None,
     sqlite_manager: Any = None,
     subtask_llm: Any = None,
+    callbacks: Any = None,
 ) -> dict[str, Any]:
     """Create/update tasks (and notes) from chat, honoring slash-command hints."""
     user_text = _last_human_message(state["messages"])
-    command, remainder = parse_command(user_text)
+    command, remainder, n_val = parse_command(user_text)
     hints = COMMANDS[command.name].hints if command else {}
     working_text = remainder if command else user_text
+
+    override = state.get("model_override")
+    if override:
+        from core.graph import _make_llm, _make_structured_llm
+        from core.prompt_templates import TaskExtractionList
+        from core.subtasks import SubtaskPlan
+        try:
+            base_llm = _make_llm(override, settings.chat_max_tokens, callbacks=callbacks)
+            task_extractor_llm = _make_structured_llm(base_llm, TaskExtractionList)
+            subtask_llm = _make_structured_llm(base_llm, SubtaskPlan)
+        except Exception as e:
+            logger.warning("Could not override task models with %s: %s", override, e)
 
     if sqlite_manager is None or task_extractor_llm is None:
         result = add_task.invoke(
@@ -578,7 +604,12 @@ async def task_tool_node(
                 parent_id = parent_target.id
                 # Inherit deadline from parent if it's earlier
                 op_deadline = _resolve_deadline(op.deadline, now)
-                deadline = min(op_deadline, parent_target.deadline)
+                if op_deadline and parent_target.deadline:
+                    deadline = min(op_deadline, parent_target.deadline)
+                elif not op_deadline and parent_target.deadline:
+                    deadline = parent_target.deadline
+                else:
+                    deadline = op_deadline
             else:
                 deadline = _resolve_deadline(op.deadline, now)
         else:
@@ -594,12 +625,21 @@ async def task_tool_node(
             materials=materials if category == TaskCategory.ACADEMIC else [],
             parent_id=parent_id,
             tags=op.tags,
+            notes=[Note(text=op.notes)] if getattr(op, "notes", None) else [],
+            is_spaced_repetition=hints.get("is_spaced_repetition", False),
         )
         await sqlite_manager.create_task(task)
         created.append(task)
         logger.info("created task id=%s title=%s cat=%s", task.id, task.title, category.value)
 
-        # Alt görevleri otomatik üretme özelliği plan gereği kaldırıldı. İstendiğinde UI üzerinden üretilecek.
+        if hints.get("generate_subtasks") and subtask_llm is not None:
+            try:
+                subs = await _generate_subtasks(task, extractor_input, subtask_llm, now, max_subtasks=n_val)
+                for s in subs:
+                    await sqlite_manager.create_task(s)
+                    created.append(s)
+            except Exception as e:
+                logger.warning("Subtask generation failed: %s", e)
 
     msgs: list[str] = []
     if created:
@@ -608,7 +648,7 @@ async def task_tool_node(
             + "\n" + "\n".join(
                 f"- '{t.title}' ({t.category.value}"
                 + (f"/{t.subtype.value}" if t.subtype else "")
-                + f"), {t.deadline.strftime('%Y-%m-%d %H:%M')}, {t.estimated_hours:g}h"
+                + f"), {t.deadline.strftime('%Y-%m-%d %H:%M') if t.deadline else 'Tarihsiz'}, {t.estimated_hours:g}h"
                 for t in created
             )
         )
@@ -633,12 +673,23 @@ async def workout_tool_node(
     *,
     workout_extractor_llm: Any = None,
     sqlite_manager: Any = None,
+    callbacks: Any = None,
 ) -> dict[str, Any]:
     """Log a single workout or import a multi-day plan (text or attachment)."""
     user_text = _last_human_message(state["messages"])
-    command, remainder = parse_command(user_text)
+    command, remainder, _ = parse_command(user_text)
     working_text = remainder if command else user_text
     hints = COMMANDS[command.name].hints if command else {}
+
+    override = state.get("model_override")
+    if override:
+        from core.graph import _make_llm, _make_structured_llm
+        from core.prompt_templates import WorkoutPlan
+        try:
+            base_llm = _make_llm(override, settings.chat_max_tokens, callbacks=callbacks)
+            workout_extractor_llm = _make_structured_llm(base_llm, WorkoutPlan)
+        except Exception as e:
+            logger.warning("Could not override workout model with %s: %s", override, e)
 
     if sqlite_manager is None or workout_extractor_llm is None:
         return {"messages": [AIMessage(content="[mock] workout tool not wired.")],
@@ -689,6 +740,142 @@ async def workout_tool_node(
     }
 
 
+async def session_node(
+    state: AthenaState,
+    *,
+    session_extractor_llm: Any = None,
+    sqlite_manager: Any = None,
+    callbacks: Any = None,
+) -> dict[str, Any]:
+    """Extract a study session and attach it to an academic task."""
+    user_text = _last_human_message(state["messages"])
+    command, remainder, n_val = parse_command(user_text)
+    working_text = remainder if command else user_text
+
+    override = state.get("model_override")
+    if override:
+        from core.graph import _make_llm, _make_structured_llm
+        from core.prompt_templates import SessionExtraction
+        try:
+            base_llm = _make_llm(override, settings.chat_max_tokens, callbacks=callbacks)
+            session_extractor_llm = _make_structured_llm(base_llm, SessionExtraction)
+        except Exception as e:
+            logger.warning("Could not override session model with %s: %s", override, e)
+
+    if sqlite_manager is None or session_extractor_llm is None:
+        return {"messages": [AIMessage(content="[mock] session tool not wired.")],
+                "active_tool": "add_session"}
+
+    now = datetime.now()
+    try:
+        extraction: Optional[SessionExtraction] = await session_extractor_llm.ainvoke(
+            [
+                SystemMessage(content=SESSION_EXTRACTION_SYSTEM_PROMPT.format(
+                    now=now.isoformat(timespec="minutes"))),
+                HumanMessage(content=working_text),
+            ]
+        )
+    except Exception as exc:
+        logger.exception("session extraction failed")
+        return {"messages": [AIMessage(content=f"Seans verisi çıkarılamadı: {exc}")],
+                "active_tool": "add_session"}
+
+    if not extraction:
+        return {"messages": [AIMessage(content="Seans çıkarılamadı.")],
+                "active_tool": "add_session"}
+                
+    tasks = await sqlite_manager.list_tasks()
+    academic_tasks = [t for t in tasks if t.category == TaskCategory.ACADEMIC]
+    target = _resolve_task_by_name(academic_tasks, working_text, None)
+    
+    if not target:
+        return {"messages": [AIMessage(content="Eşleşen akademik görev bulunamadı. Lütfen mesajın içine hedeflenen görev adını yazın.")],
+                "active_tool": "add_session"}
+                
+    try:
+        session_date = datetime.fromisoformat(extraction.date).date()
+    except ValueError:
+        session_date = now.date()
+
+    session = AcademicSession(
+        task_id=target.id,
+        date=session_date,
+        start_time=extraction.start_time,
+        end_time=extraction.end_time,
+        duration_minutes=extraction.duration_minutes,
+        notes=extraction.notes
+    )
+    await sqlite_manager.create_academic_session(session)
+    
+    if extraction.notes:
+        target.notes = [*target.notes, Note(text=f"[Seans Notu] {extraction.notes}")]
+        await sqlite_manager.update_task(target)
+    
+    return {
+        "messages": [AIMessage(content=f"'{target.title}' görevi için {session.duration_minutes} dakikalık seans eklendi.")],
+        "active_tool": "add_session",
+        "current_task": target
+    }
+
+
+async def idea_extractor_node(
+    state: AthenaState,
+    *,
+    idea_extractor_llm: Any = None,
+    sqlite_manager: Any = None,
+    callbacks: Any = None,
+) -> dict[str, Any]:
+    """Extract ideas from text using the provided N value."""
+    user_text = _last_human_message(state["messages"])
+    command, remainder, n_val = parse_command(user_text)
+    working_text = remainder if command else user_text
+    n = n_val or 1
+
+    override = state.get("model_override")
+    if override:
+        from core.graph import _make_llm, _make_structured_llm
+        from core.prompt_templates import IdeaExtractionList
+        try:
+            base_llm = _make_llm(override, settings.chat_max_tokens, callbacks=callbacks)
+            idea_extractor_llm = _make_structured_llm(base_llm, IdeaExtractionList)
+        except Exception as e:
+            logger.warning("Could not override idea model with %s: %s", override, e)
+
+    if idea_extractor_llm is None or sqlite_manager is None:
+        return {"messages": [AIMessage(content="[mock] idea tool not wired.")],
+                "active_tool": "extract_ideas"}
+
+    try:
+        extraction: Optional[IdeaExtractionList] = await idea_extractor_llm.ainvoke(
+            [
+                SystemMessage(content=IDEA_EXTRACTION_SYSTEM_PROMPT.format(n_val=n)),
+                HumanMessage(content=working_text),
+            ]
+        )
+    except Exception as exc:
+        logger.exception("idea extraction failed")
+        return {"messages": [AIMessage(content=f"Fikir çıkarılamadı: {exc}")],
+                "active_tool": "extract_ideas"}
+
+    if not extraction or not extraction.ideas:
+        return {"messages": [AIMessage(content="Herhangi bir fikir çıkarılamadı.")],
+                "active_tool": "extract_ideas"}
+
+    msgs = [f"{len(extraction.ideas)} Fikir yakalandı ve Zettelkasten'e kaydedildi:"]
+    
+    from core.schemas import Idea
+    for i, item in enumerate(extraction.ideas, 1):
+        idea = Idea(title=item.title, content=item.content)
+        await sqlite_manager.upsert_idea(idea)
+        msgs.append(f"{i}. **{idea.title}**\n   {idea.content}")
+
+    return {
+        "messages": [AIMessage(content="\n".join(msgs))],
+        "active_tool": "extract_ideas",
+    }
+
+
+
 def route_selector(state: AthenaState) -> RouteTarget:
     """Conditional-edge function: send the run to the router's chosen node."""
     return state.get("route") or "chat_node"
@@ -706,6 +893,8 @@ def build_athena_graph(
     task_extractor_llm: Any = None,
     workout_extractor_llm: Any = None,
     subtask_llm: Any = None,
+    session_extractor_llm: Any = None,
+    idea_extractor_llm: Any = None,
     usage_callback: Any = None,
 ) -> Any:
     """Build and compile the Athena-Academic routing graph.
@@ -737,6 +926,10 @@ def build_athena_graph(
             task_extractor_llm = _default_task_extractor_llm(callbacks)
         if workout_extractor_llm is None:
             workout_extractor_llm = _default_workout_extractor_llm(callbacks)
+        if session_extractor_llm is None:
+            session_extractor_llm = _default_session_extractor_llm(callbacks)
+        if idea_extractor_llm is None:
+            idea_extractor_llm = _default_idea_extractor_llm(callbacks)
         if subtask_llm is None:
             try:
                 sub_base = _make_llm(
@@ -752,7 +945,7 @@ def build_athena_graph(
     builder = StateGraph(AthenaState)
     builder.add_node("router_node", partial(router_node, router_llm=router_llm))
     builder.add_node(
-        "chat_node", partial(chat_node, chat_llm=chat_llm, chroma=chroma_manager)
+        "chat_node", partial(chat_node, chat_llm=chat_llm, chroma=chroma_manager, callbacks=callbacks)
     )
     builder.add_node("pdf_tool_node", pdf_tool_node)
     builder.add_node(
@@ -762,6 +955,7 @@ def build_athena_graph(
             task_extractor_llm=task_extractor_llm,
             sqlite_manager=sqlite_manager,
             subtask_llm=subtask_llm,
+            callbacks=callbacks,
         ),
     )
     builder.add_node(
@@ -770,6 +964,25 @@ def build_athena_graph(
             workout_tool_node,
             workout_extractor_llm=workout_extractor_llm,
             sqlite_manager=sqlite_manager,
+            callbacks=callbacks,
+        ),
+    )
+    builder.add_node(
+        "session_node",
+        partial(
+            session_node,
+            session_extractor_llm=session_extractor_llm,
+            sqlite_manager=sqlite_manager,
+            callbacks=callbacks,
+        ),
+    )
+    builder.add_node(
+        "idea_extractor_node",
+        partial(
+            idea_extractor_node,
+            idea_extractor_llm=idea_extractor_llm,
+            sqlite_manager=sqlite_manager,
+            callbacks=callbacks,
         ),
     )
 
@@ -782,12 +995,16 @@ def build_athena_graph(
             "pdf_tool_node": "pdf_tool_node",
             "task_tool_node": "task_tool_node",
             "workout_tool_node": "workout_tool_node",
+            "session_node": "session_node",
+            "idea_extractor_node": "idea_extractor_node",
         },
     )
     builder.add_edge("chat_node", END)
     builder.add_edge("pdf_tool_node", END)
     builder.add_edge("task_tool_node", END)
     builder.add_edge("workout_tool_node", END)
+    builder.add_edge("session_node", END)
+    builder.add_edge("idea_extractor_node", END)
 
     return builder.compile()
 
@@ -800,4 +1017,6 @@ __all__ = [
     "router_node",
     "task_tool_node",
     "workout_tool_node",
+    "session_node",
+    "idea_extractor_node",
 ]

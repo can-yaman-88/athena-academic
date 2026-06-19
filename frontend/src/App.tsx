@@ -6,11 +6,13 @@ import ManagePage from "./pages/ManagePage";
 import WorkoutsPage from "./pages/WorkoutsPage";
 import IdeasPage from "./pages/IdeasPage";
 import { SyncProvider } from "./SyncContext";
+import { ChatProvider } from "./ChatContext";
 
 export default function App() {
   return (
     <BrowserRouter>
       <SyncProvider>
+        <ChatProvider>
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<HomePage />} />
@@ -20,6 +22,7 @@ export default function App() {
             <Route path="ideas" element={<IdeasPage />} />
           </Route>
         </Routes>
+        </ChatProvider>
       </SyncProvider>
     </BrowserRouter>
   );

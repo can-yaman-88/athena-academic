@@ -25,11 +25,11 @@ from core.schemas import Task
 # Valid routing destinations the router may choose. Kept here (not in graph.py)
 # so both the state and the structured-output schema share one definition.
 RouteTarget = Literal[
-    "chat_node", "pdf_tool_node", "task_tool_node", "workout_tool_node"
+    "chat_node", "pdf_tool_node", "task_tool_node", "workout_tool_node",
+    "session_node", "idea_extractor_node"
 ]
 
-# Coarse estimate of the user's current cognitive load, surfaced by the router.
-CognitiveLoadStatus = Literal["low", "normal", "high", "overloaded"]
+
 
 
 class AthenaState(TypedDict):
@@ -49,8 +49,7 @@ class AthenaState(TypedDict):
     # Name of the tool the most recent tool node executed (or None for chat).
     active_tool: NotRequired[Optional[str]]
 
-    # Router's assessment of how loaded the user is, for downstream pacing.
-    cognitive_load_status: NotRequired[CognitiveLoadStatus]
+
 
     # The destination the router selected; read by the conditional edge.
     route: NotRequired[Optional[RouteTarget]]
@@ -61,6 +60,9 @@ class AthenaState(TypedDict):
     # Slash command name (without the leading '/') when the user issued one.
     command: NotRequired[Optional[str]]
 
+    # N value extracted from command, like /fikir(3) -> 3
+    n_val: NotRequired[Optional[int]]
+
     # Attached materials injected from chat uploads: [{name, markdown, path}].
     attachments: NotRequired[list]
 
@@ -68,7 +70,6 @@ class AthenaState(TypedDict):
     model_override: NotRequired[Optional[str]]
 
 __all__ = [
-    "CognitiveLoadStatus",
     "AthenaState",
     "RouteTarget",
 ]

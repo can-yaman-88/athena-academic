@@ -109,23 +109,15 @@ function WorkoutDetailModal({
   onClose,
   onChanged,
 }: {
-  w: Workout | null;
+  w: Workout;
   onClose: () => void;
   onChanged: () => void;
 }) {
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(w.note || "");
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
 
-  useEffect(() => {
-    setNote(w?.note || "");
-    setSavedMsg("");
-  }, [w]);
-
-  if (!w) return null;
-
   async function saveNote() {
-    if (!w) return;
     setSaving(true);
     setSavedMsg("");
     try {
@@ -140,7 +132,7 @@ function WorkoutDetailModal({
   }
 
   return (
-    <Modal open={!!w} onClose={onClose} title={w.title || "Antrenman"} widthClass="max-w-2xl">
+    <Modal open={true} onClose={onClose} title={w.title || "Antrenman"} widthClass="max-w-2xl">
       <div className="flex h-full flex-col gap-4 overflow-y-auto">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <DetailRow label="Tarih" value={w.date} />
@@ -174,7 +166,7 @@ function WorkoutDetailModal({
           </div>
           <div className="min-h-[220px] overflow-hidden rounded-lg border border-line-strong">
             {/* keyed by id so the editor remounts (and reloads content) per workout */}
-            <NotionEditor key={w.id} initialContent={note} onChange={setNote} />
+            <NotionEditor key={w.id} initialContent={w.note || ""} onChange={setNote} />
           </div>
         </div>
       </div>
@@ -185,7 +177,12 @@ function WorkoutDetailModal({
 export default function WorkoutsPage() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [uploadMsg, setUploadMsg] = useState("");
-  const [planText, setPlanText] = useState("");
+  const [planText, setPlanText] = useState(() => {
+    return localStorage.getItem("jarvis_workout_plan") || "";
+  });
+  useEffect(() => {
+    localStorage.setItem("jarvis_workout_plan", planText);
+  }, [planText]);
   const [planMsg, setPlanMsg] = useState("");
   const [planBusy, setPlanBusy] = useState(false);
   const [selected, setSelected] = useState<Workout | null>(null);
@@ -223,11 +220,12 @@ export default function WorkoutsPage() {
     setPlanBusy(true);
     setPlanMsg("");
     try {
-      await streamChat(`/plan\n${planText.trim()}`, (evt) => {
+      await streamChat(`/wplan\n${planText.trim()}`, (evt) => {
         if (evt.type === "message") setPlanMsg(String(evt.content));
         else if (evt.type === "error") setPlanMsg(`hata: ${String(evt.error)}`);
       });
       setPlanText("");
+      localStorage.removeItem("jarvis_workout_plan");
       await refresh();
     } catch (e) {
       setPlanMsg(`hata: ${(e as Error).message}`);
@@ -297,11 +295,13 @@ export default function WorkoutsPage() {
         </Card>
       </div>
 
-      <WorkoutDetailModal
-        w={selected}
-        onClose={() => setSelected(null)}
-        onChanged={() => void refresh()}
-      />
+      {selected && (
+        <WorkoutDetailModal
+          w={selected}
+          onClose={() => setSelected(null)}
+          onChanged={() => void refresh()}
+        />
+      )}
     </div>
   );
 }

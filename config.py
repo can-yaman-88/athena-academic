@@ -168,7 +168,7 @@ class Settings(BaseModel):
     uploads_dir: Path = Field(default=_BASE_DIR / "data" / "uploads")
 
     # High-capacity model used for note analysis + subtask generation.
-    notes_model: str = Field(default="openai/gpt-5.5")
+    notes_model: str = Field(default="qwen/qwen3.7-max")
     notes_model_max_tokens: int = Field(default=4096, gt=0)
 
     # --- Runalyze integration ---------------------------------------------

@@ -27,6 +27,16 @@ function htmlHasText(html: string): boolean {
   return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim().length > 0;
 }
 
+function toDatetimeLocal(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const off = d.getTimezoneOffset();
+    return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
+  } catch {
+    return iso;
+  }
+}
+
 export default function TaskCard({
   task,
   subtasks,
@@ -49,6 +59,16 @@ export default function TaskCard({
   const fileRef = useRef<HTMLInputElement>(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [showLinkInput, setShowLinkInput] = useState(false);
+  const [editingTask, setEditingTask] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: task.title,
+    deadline: toDatetimeLocal(task.deadline),
+    discipline: task.discipline,
+    estimated_hours: task.estimated_hours,
+    category: task.category,
+    subtype: task.subtype || "project" as "project" | "assignment" | "study_session",
+    progress: task.progress,
+  });
   const academic = task.category === "academic";
 
   const run = async (fn: () => Promise<unknown>) => {
@@ -65,27 +85,112 @@ export default function TaskCard({
     <div className={`rounded-lg border transition-colors hover:border-line-strong ${isSubtask ? "border-line/50 bg-surface-2/40 p-2 mt-2" : "border-line bg-surface-2/50 p-3"}`}>
       {/* header */}
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate text-sm font-medium text-zinc-100">{task.title}</span>
-            {academic && task.subtype && (
-              <Badge tone={subtypeTone[task.subtype] ?? "zinc"}>{task.subtype}</Badge>
-            )}
-            {task.tags && task.tags.map(t => (
-              <Badge key={t} tone="sky">#{t}</Badge>
-            ))}
-            <Badge tone={task.status === "completed" ? "emerald" : "amber"}>
-              {task.status === "completed" ? "tamam" : "bekliyor"}
-            </Badge>
-          </div>
-          <div className="mt-0.5 text-xs text-zinc-500">
-            {task.discipline} · {task.estimated_hours}h · {fmtDeadline(task.deadline)}
-          </div>
+        <div className="min-w-0 flex-1">
+          {!editingTask ? (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="truncate text-sm font-medium text-zinc-100">{task.title}</span>
+                {academic && task.subtype && (
+                  <Badge tone={subtypeTone[task.subtype] ?? "zinc"}>{task.subtype}</Badge>
+                )}
+                {task.tags && task.tags.map(t => (
+                  <Badge key={t} tone="sky">#{t}</Badge>
+                ))}
+                <Badge tone={task.status === "completed" ? "emerald" : "amber"}>
+                  {task.status === "completed" ? "tamam" : "bekliyor"}
+                </Badge>
+              </div>
+              <div className="mt-0.5 text-xs text-zinc-500">
+                {task.discipline} · {task.estimated_hours}h · {fmtDeadline(task.deadline)}
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <input
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500 col-span-2"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+              />
+              <input
+                type="datetime-local"
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500"
+                value={editForm.deadline}
+                onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
+              />
+              <input
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500"
+                value={editForm.discipline}
+                onChange={(e) => setEditForm({ ...editForm, discipline: e.target.value })}
+              />
+              <input
+                type="number"
+                min={0.5}
+                step={0.5}
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500"
+                value={editForm.estimated_hours}
+                onChange={(e) => setEditForm({ ...editForm, estimated_hours: Number(e.target.value) })}
+              />
+              <select
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500"
+                value={editForm.category}
+                onChange={(e) => setEditForm({ ...editForm, category: e.target.value as "academic" | "daily" })}
+              >
+                <option value="daily">Günlük</option>
+                <option value="academic">Akademik</option>
+              </select>
+              {editForm.category === "academic" && (
+                <select
+                  className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500"
+                  value={editForm.subtype}
+                  onChange={(e) => setEditForm({ ...editForm, subtype: e.target.value as "project" | "assignment" | "study_session" })}
+                >
+                  <option value="project">proje</option>
+                  <option value="assignment">ödev</option>
+                  <option value="study_session">seans</option>
+                </select>
+              )}
+              <input
+                type="number"
+                min={0}
+                max={100}
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500"
+                value={editForm.progress}
+                onChange={(e) => setEditForm({ ...editForm, progress: Number(e.target.value) })}
+              />
+              <div className="col-span-2 flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    run(async () => {
+                      await updateTask(task.id, {
+                        title: editForm.title,
+                        deadline: editForm.deadline,
+                        discipline: editForm.discipline,
+                        estimated_hours: editForm.estimated_hours,
+                        category: editForm.category,
+                        subtype: editForm.category === "academic" ? editForm.subtype as "project" | "assignment" | "study_session" : null,
+                        progress: editForm.progress,
+                      });
+                      setEditingTask(false);
+                    })
+                  }
+                >
+                  Kaydet
+                </Button>
+                <Button size="sm" variant="subtle" onClick={() => setEditingTask(false)}>
+                  İptal
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 gap-1.5">
-          {task.status !== "completed" && (
-            <Button variant="ghost" disabled={busy} onClick={() => run(() => completeTask(task.id))}>✓</Button>
+          {task.status !== "completed" ? (
+            <Button variant="ghost" disabled={busy} title="Tamamlandı işaretle" onClick={() => run(() => completeTask(task.id))}>✓</Button>
+          ) : (
+            <Button variant="ghost" disabled={busy} title="Tamamlamayı geri al" onClick={() => run(() => updateTask(task.id, { status: "pending" }))}>↩</Button>
           )}
+          <Button variant="ghost" disabled={busy} onClick={() => setEditingTask((e) => !e)} title="Düzenle">✏️</Button>
           <Button variant="subtle" onClick={() => setOpen((o) => !o)}>{open ? "▲" : "▼"}</Button>
           <Button variant="danger" disabled={busy} onClick={() => run(() => deleteTask(task.id))}>Sil</Button>
         </div>

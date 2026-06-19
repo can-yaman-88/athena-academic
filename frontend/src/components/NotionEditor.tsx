@@ -6,9 +6,11 @@ import { useEffect, useState, useRef, useCallback } from "react";
 export default function NotionEditor({
   initialContent,
   onChange,
+  fullPage = false,
 }: {
   initialContent: string;
   onChange: (html: string) => void;
+  fullPage?: boolean;
 }) {
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashCoords, setSlashCoords] = useState({ top: 0, left: 0 });
@@ -18,23 +20,26 @@ export default function NotionEditor({
     extensions: [
       StarterKit,
       Placeholder.configure({
-        placeholder: "Bir şeyler yazın veya komutlar için '/' tuşuna basın...",
+        placeholder: "Bir şeyler yazın veya blok komutları için '++' tuşlarına basın...",
       }),
     ],
     content: initialContent,
     editorProps: {
-      attributes: {
-        class: "prose prose-invert prose-emerald max-w-none focus:outline-none min-h-[200px]",
-      },
+        attributes: {
+          class: `prose prose-invert prose-emerald max-w-none focus:outline-none ${fullPage ? "min-h-[calc(96vh-4rem)]" : "min-h-[200px]"}`,
+        },
       handleKeyDown: (view, event) => {
-        if (event.key === "/") {
-          const { top, left } = view.coordsAtPos(view.state.selection.from);
-          const editorBox = editorRef.current?.getBoundingClientRect();
-          if (editorBox) {
-            setSlashCoords({ top: top - editorBox.top + 30, left: left - editorBox.left });
-            setSlashMenuOpen(true);
+        if (event.key === "+") {
+          const pos = view.state.selection.from;
+          const charBefore = view.state.doc.textBetween(Math.max(0, pos - 1), pos, "\n", "\n");
+          if (charBefore === "+") {
+            const { top, left } = view.coordsAtPos(pos);
+            const editorBox = editorRef.current?.getBoundingClientRect();
+            if (editorBox) {
+              setSlashCoords({ top: top - editorBox.top + 30, left: left - editorBox.left });
+              setSlashMenuOpen(true);
+            }
           }
-          return false;
         }
         if (event.key === "Escape") {
           setSlashMenuOpen(false);
@@ -51,7 +56,7 @@ export default function NotionEditor({
         editor.state.selection.from,
         " "
       );
-      if (!textBeforeCursor.endsWith("/")) {
+      if (!textBeforeCursor.endsWith("+")) {
         setSlashMenuOpen(false);
       }
     },
@@ -66,11 +71,16 @@ export default function NotionEditor({
 
   const insertCommand = useCallback((command: () => void) => {
     if (editor) {
-      // Delete the "/"
-      editor.commands.deleteRange({
-        from: editor.state.selection.from - 1,
-        to: editor.state.selection.from,
-      });
+      // Remove the "/" that triggered the menu. Inspect the single character
+      // immediately before the cursor (not the whole text node) so it is removed
+      // reliably regardless of where in the node the caret sits.
+      const pos = editor.state.selection.from;
+      if (pos > 1) {
+        const charsBefore = editor.state.doc.textBetween(pos - 2, pos, "\n", "\n");
+        if (charsBefore === "++") {
+          editor.chain().focus().deleteRange({ from: pos - 2, to: pos }).run();
+        }
+      }
       command();
       editor.view.focus();
     }
@@ -137,7 +147,7 @@ export default function NotionEditor({
 
   return (
     <div className="relative h-full w-full bg-surface-2 text-zinc-200" ref={editorRef}>
-      <EditorContent editor={editor} className="h-full cursor-text p-6" />
+      <EditorContent editor={editor} className={`cursor-text p-6 ${fullPage ? "h-full min-h-full" : "h-full"}`} />
 
       {slashMenuOpen && (
         <div

@@ -35,7 +35,9 @@ import json
 
 from config import settings
 from core.schemas import (
+    AcademicSession,
     AcademicSubtype,
+    DailyNote,
     Material,
     Note,
     PdfJob,
@@ -49,6 +51,7 @@ from core.schemas import (
     Journal,
     JournalItem,
     JournalItemType,
+    Idea,
 )
 from db.exceptions import DatabaseError, RecordNotFoundError
 
@@ -58,21 +61,25 @@ _CREATE_TASKS = """
 CREATE TABLE IF NOT EXISTS tasks (
     id              TEXT PRIMARY KEY,
     title           TEXT NOT NULL,
-    deadline        TEXT NOT NULL,
+    deadline        TEXT,
     discipline      TEXT NOT NULL,
     status          TEXT NOT NULL DEFAULT 'pending',
-    estimated_hours REAL NOT NULL,
+    estimated_hours REAL,
     category        TEXT NOT NULL DEFAULT 'daily',
     subtype         TEXT,
     parent_id       TEXT,
     progress        INTEGER NOT NULL DEFAULT 0,
     materials       TEXT NOT NULL DEFAULT '[]',
     notes           TEXT NOT NULL DEFAULT '[]',
-    tags            TEXT NOT NULL DEFAULT '[]'
+    tags            TEXT NOT NULL DEFAULT '[]',
+    is_spaced_repetition INTEGER NOT NULL DEFAULT 0,
+    streak          INTEGER NOT NULL DEFAULT 0,
+    ease_factor     REAL NOT NULL DEFAULT 2.5,
+    interval_days   INTEGER NOT NULL DEFAULT 0,
+    original_task_id TEXT
 );
 """
 
-# (column, "ALTER ... ADD COLUMN" clause) for migrating pre-v2 task tables.
 _TASK_COLUMN_MIGRATIONS = [
     ("category", "category TEXT NOT NULL DEFAULT 'daily'"),
     ("subtype", "subtype TEXT"),
@@ -81,11 +88,39 @@ _TASK_COLUMN_MIGRATIONS = [
     ("materials", "materials TEXT NOT NULL DEFAULT '[]'"),
     ("notes", "notes TEXT NOT NULL DEFAULT '[]'"),
     ("tags", "tags TEXT NOT NULL DEFAULT '[]'"),
+    ("is_spaced_repetition", "is_spaced_repetition INTEGER NOT NULL DEFAULT 0"),
+    ("streak", "streak INTEGER NOT NULL DEFAULT 0"),
+    ("ease_factor", "ease_factor REAL NOT NULL DEFAULT 2.5"),
+    ("interval_days", "interval_days INTEGER NOT NULL DEFAULT 0"),
+    ("original_task_id", "original_task_id TEXT"),
 ]
 
 _CREATE_TASKS_STATUS_INDEX = (
     "CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks (status);"
 )
+
+_CREATE_ACADEMIC_SESSIONS = """
+CREATE TABLE IF NOT EXISTS academic_sessions (
+    id               TEXT PRIMARY KEY,
+    task_id          TEXT NOT NULL,
+    date             TEXT NOT NULL,
+    start_time       TEXT NOT NULL,
+    end_time         TEXT NOT NULL,
+    duration_minutes INTEGER NOT NULL,
+    notes            TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+"""
+
+_CREATE_DAILY_NOTES = """
+CREATE TABLE IF NOT EXISTS daily_notes (
+    id          TEXT PRIMARY KEY,
+    date        TEXT NOT NULL UNIQUE,
+    content     TEXT NOT NULL DEFAULT '',
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+"""
 
 _CREATE_STUDY_SESSIONS = """
 CREATE TABLE IF NOT EXISTS study_sessions (
@@ -177,6 +212,21 @@ _CREATE_JOURNAL_ITEMS_INDEX = (
     "CREATE INDEX IF NOT EXISTS idx_journal_items_journal_id ON journal_items (journal_id);"
 )
 
+_CREATE_IDEAS = """
+CREATE TABLE IF NOT EXISTS ideas (
+    id         TEXT PRIMARY KEY,
+    title      TEXT NOT NULL DEFAULT '',
+    content    TEXT NOT NULL DEFAULT '',
+    materials  TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+"""
+
+_CREATE_IDEAS_INDEX = (
+    "CREATE INDEX IF NOT EXISTS idx_ideas_updated ON ideas (updated_at DESC);"
+)
+
 
 class SQLiteManager:
     """Async CRUD manager backed by a single ``aiosqlite`` connection."""
@@ -244,6 +294,8 @@ class SQLiteManager:
         conn = self._require_conn()
         await conn.execute(_CREATE_TASKS)
         await conn.execute(_CREATE_TASKS_STATUS_INDEX)
+        await conn.execute(_CREATE_ACADEMIC_SESSIONS)
+        await conn.execute(_CREATE_DAILY_NOTES)
         await conn.execute(_CREATE_STUDY_SESSIONS)
         await conn.execute(_CREATE_PHYSICAL_LOADS)
         await conn.execute(_CREATE_CHAT_MATERIALS)
@@ -252,10 +304,13 @@ class SQLiteManager:
         await conn.execute(_CREATE_JOURNALS_DATE_INDEX)
         await conn.execute(_CREATE_JOURNAL_ITEMS)
         await conn.execute(_CREATE_JOURNAL_ITEMS_INDEX)
+        await conn.execute(_CREATE_IDEAS)
+        await conn.execute(_CREATE_IDEAS_INDEX)
         # Cognitive-load scoring was removed; drop its legacy table if present.
         await conn.execute("DROP TABLE IF EXISTS load_adjustments")
         await conn.commit()
         await self._migrate_task_columns()
+        await self._migrate_daily_notes()
 
     async def _migrate_task_columns(self) -> None:
         """Add any v2 task columns missing from a pre-existing DB (idempotent)."""
@@ -270,6 +325,21 @@ class SQLiteManager:
         if added:
             await conn.commit()
         await self._migrate_load_columns()
+
+    async def _migrate_daily_notes(self) -> None:
+        """Add any v2 daily_notes columns missing from a pre-existing DB."""
+        conn = self._require_conn()
+        async with conn.execute("PRAGMA table_info(daily_notes)") as cursor:
+            existing = {row[1] for row in await cursor.fetchall()}
+        added = False
+        if "created_at" not in existing:
+            await conn.execute("ALTER TABLE daily_notes ADD COLUMN created_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00'")
+            added = True
+        if "updated_at" not in existing:
+            await conn.execute("ALTER TABLE daily_notes ADD COLUMN updated_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00'")
+            added = True
+        if added:
+            await conn.commit()
 
     async def _migrate_load_columns(self) -> None:
         """Add any v2 physical_loads columns missing from a pre-existing DB."""
@@ -445,6 +515,11 @@ class SQLiteManager:
             materials=[Material(**m) for m in _json("materials")],
             notes=[Note(**n) for n in _json("notes")],
             tags=_json("tags"),
+            is_spaced_repetition=bool(row["is_spaced_repetition"]) if "is_spaced_repetition" in keys else False,
+            streak=row["streak"] if "streak" in keys else 0,
+            ease_factor=row["ease_factor"] if "ease_factor" in keys else 2.5,
+            interval_days=row["interval_days"] if "interval_days" in keys else 0,
+            original_task_id=row["original_task_id"] if "original_task_id" in keys else None,
         )
 
     @staticmethod
@@ -483,13 +558,14 @@ class SQLiteManager:
             """
             INSERT OR REPLACE INTO tasks
                 (id, title, deadline, discipline, status, estimated_hours,
-                 category, subtype, parent_id, progress, materials, notes, tags)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 category, subtype, parent_id, progress, materials, notes, tags,
+                 is_spaced_repetition, streak, ease_factor, interval_days, original_task_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 task.id,
                 task.title,
-                task.deadline.isoformat(),
+                task.deadline.isoformat() if task.deadline else None,
                 task.discipline,
                 task.status.value,
                 task.estimated_hours,
@@ -500,6 +576,11 @@ class SQLiteManager:
                 json.dumps([m.model_dump(mode="json") for m in task.materials]),
                 json.dumps([n.model_dump(mode="json") for n in task.notes]),
                 json.dumps(task.tags),
+                int(task.is_spaced_repetition),
+                task.streak,
+                task.ease_factor,
+                task.interval_days,
+                task.original_task_id,
             ),
         )
         self._sync_queue(task)
@@ -651,6 +732,26 @@ class SQLiteManager:
         )
         return load
 
+    async def create_academic_session(self, session: AcademicSession) -> None:
+        """Insert a new academic session."""
+        conn = self._require_conn()
+        sql = """
+        INSERT INTO academic_sessions (id, task_id, date, start_time, end_time, duration_minutes, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """
+        await conn.execute(
+            sql,
+            (
+                session.id,
+                session.task_id,
+                session.date.isoformat(),
+                session.start_time,
+                session.end_time,
+                session.duration_minutes,
+                session.notes,
+            ),
+        )
+        await conn.commit()
     async def get_physical_load(self, load_id: str) -> PhysicalLoad:
         row = await self._fetchone(
             "SELECT * FROM physical_loads WHERE id = ?", (load_id,)
@@ -838,6 +939,91 @@ class SQLiteManager:
 
     async def delete_journal_item(self, item_id: str) -> None:
         await self._write("DELETE FROM journal_items WHERE id = ?", (item_id,))
+
+    # ------------------------------------------------------------------ #
+    # Ideas (free-form notes with materials; no AI processing)
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _row_to_idea(row: aiosqlite.Row) -> Idea:
+        raw = row["materials"]
+        materials = json.loads(raw) if raw else []
+        return Idea(
+            id=row["id"],
+            title=row["title"],
+            content=row["content"],
+            materials=[Material(**m) for m in materials],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    async def list_ideas(self) -> list[Idea]:
+        rows = await self._fetchall(
+            "SELECT * FROM ideas ORDER BY updated_at DESC", ()
+        )
+        return [self._row_to_idea(row) for row in rows]
+
+    async def get_idea(self, idea_id: str) -> Idea:
+        row = await self._fetchone("SELECT * FROM ideas WHERE id = ?", (idea_id,))
+        if row is None:
+            raise RecordNotFoundError(f"Idea not found: {idea_id}")
+        return self._row_to_idea(row)
+
+    async def upsert_idea(self, idea: Idea) -> Idea:
+        await self._write(
+            """
+            INSERT OR REPLACE INTO ideas (id, title, content, materials, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                idea.id,
+                idea.title,
+                idea.content,
+                json.dumps([m.model_dump(mode="json") for m in idea.materials]),
+                idea.created_at.isoformat(),
+                idea.updated_at.isoformat(),
+            ),
+        )
+        return idea
+
+    async def delete_idea(self, idea_id: str) -> None:
+        await self._write("DELETE FROM ideas WHERE id = ?", (idea_id,))
+
+    # ------------------------------------------------------------------ #
+    # Daily Notes
+    # ------------------------------------------------------------------ #
+    def _row_to_daily_note(self, row: aiosqlite.Row) -> DailyNote:
+        return DailyNote(
+            id=row["id"],
+            date=datetime.fromisoformat(row["date"]).date(),
+            content=row["content"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )
+
+    async def get_daily_notes(self) -> list[DailyNote]:
+        rows = await self._fetchall("SELECT * FROM daily_notes ORDER BY date DESC", ())
+        return [self._row_to_daily_note(row) for row in rows]
+
+    async def upsert_daily_note(self, note: DailyNote) -> DailyNote:
+        await self._write(
+            """
+            INSERT OR REPLACE INTO daily_notes (id, date, content, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                note.id,
+                note.date.isoformat(),
+                note.content,
+                note.created_at.isoformat(),
+                note.updated_at.isoformat(),
+            ),
+        )
+        return note
+
+    # ------------------------------------------------------------------ #
+    # Tags
+    # ------------------------------------------------------------------ #
 
 
 __all__ = ["SQLiteManager"]

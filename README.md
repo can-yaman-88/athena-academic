@@ -2,12 +2,12 @@
 
 Otonom, ajan tabanlı (agentic) bir akademik asistan sistemi. PDF ders materyallerini
 **tam bir boru hattıyla** işler (OCR/Markdown → LaTeX ders notu → derlenmiş PDF →
-sınav → Anki flashcard) ve notları bilgi tabanına ekler; görevlerini ve antrenmanlarını
-yönetir; fiziksel yorgunluğuna göre bilişsel iş yükünü dengeler; API maliyetini iki ayrı
-sayaçta (PDF vs. ajan) izler. Tüm LLM erişimi **OpenRouter** üzerinden yapılır;
+sınav → Anki flashcard) ve notları bilgi tabanına ekler; görevlerini, günlüklerini (journal)
+ve antrenmanlarını yönetir; fiziksel yorgunluğuna göre bilişsel iş yükünü dengeler; API
+maliyetini iki ayrı sayaçta (PDF vs. ajan) izler. Tüm LLM erişimi **OpenRouter** üzerinden yapılır;
 yerelde yalnızca ChromaDB gömme modeli çalışır.
 
-Arayüz dört sayfadan oluşur:
+Arayüz beş sayfadan oluşur:
 - **Günüm** — solda günün görevleri/son tarihleri ve bilişsel kapasite, sağda ajan sohbeti
   (dosya ekleme + `/` komutları ile).
 - **PDF Otomasyonu** — solda geçmiş PDF'ler, ortada (üst) API maliyet/kullanım analizleri +
@@ -16,20 +16,23 @@ Arayüz dört sayfadan oluşur:
 - **Görevler** — **Akademik** (proje/ödev/seans alt türleri, ilerleme, alt görevler,
   notlar, materyaller, **ham dosya ekleri**) ve **Günlük** görevler için tam CRUD.
 - **Antrenman** — planlı/tamamlanan antrenmanlar, TrainingPeaks tarzı opsiyonel metrikler
-  (mesafe/tempo/hız/nabız), **JSON/CSV/.FIT** veri içe aktarma ve çoklu-gün plan içe aktarma.
+  (mesafe/tempo/hız/nabız), **JSON/CSV/.FIT** veri içe aktarma, **Runalyze** entegrasyonu ve çoklu-gün plan içe aktarma.
   Antrenmanlar yalnızca **tamamlandığında** bilişsel yüke eklenir.
+- **Fikirler (Ideas)** — Serbest biçimli notların, fikirlerin ve dosyaların kaydedilebildiği, yapay zeka işlemesi gerektirmeyen esnek çalışma alanı.
 
 ### Öne çıkan yetenekler
 - **Sohbetten görev oluştur/düzenle**: tarih verilmezse bugünkü, yoksa en yakın gelecekteki
   görev düzenlenir. Eksik bilgi hata vermez; mantıklı varsayılanlar uygulanır.
-- **`/` komutları** (deterministik yönlendirme): `/akademik`, `/proje`, `/duzenle`,
-  `/complete`, `/sil`, `/ertele`, `/antrenman`, `/plan`, `/not`, `/yardim` … Görev
+- **Otomatik Alt Görev Üretimi**: LLM kullanılarak bir ana göreve (veya plana) ait alt görevler `/altgörev`, `/altakademik` ve `/plan` komutlarıyla otomatik olarak üretilip veritabanına eklenir.
+- **`/` komutları** (deterministik yönlendirme): `/görev`, `/agörev`, `/altgörev`, `/altakademik`, `/fikir`, `/antrenman`, `/seans`, `/plan`, `/aralık`, `/yardim`. Görev
   yönetimi komutları ad tam eşleşmezse **en benzer** görevi hedefler. Tümü [`codes.md`](codes.md)'de.
 - **Sohbete dosya ekleme**: PDF → her zaman Markdown, görüntü → vision modeli. Eklenen
   materyal göreve iliştirilir ve proje görevlerinde **AI alt görev üretiminde** kullanılır.
 - **Notlar + analiz**: göreve not ekle; "Notları analiz et" ile yüksek kapasiteli model
   notlardan metrik çıkarır — çalışma zorluğunu **o güne ait bilişsel yüke** ekler, başka
   görevlerdeki ilerlemeyi ilgili göreve işler.
+- **Günlükler ve AI Analizi (Journal)**: Günlük formatında alınan notlar saklanır ve `ai-analyze` uç noktasıyla yüksek kapasiteli AI modeli tarafından analiz edilerek yapısal ögelere (JournalItem) dönüştürülür.
+- **Runalyze Entegrasyonu**: Antrenman verilerini otomatik olarak veya manuel tetiklemeyle Runalyze API üzerinden arka planda senkronize edip sisteme işler.
 - **Çoklu-gün antrenman planı**: bir aylık planı metin/`.md`/`.json` olarak yapıştır/yükle,
   AI tek tek antrenmana çevirip takvime ekler.
 
@@ -55,7 +58,7 @@ Arayüz dört sayfadan oluşur:
 
 Sistem birbirine geçen beş katmandan oluşur:
 
-1. **Veri katmanı** — Async SQLite (görevler, antrenmanlar, PDF işleri) +
+1. **Veri katmanı** — Async SQLite (görevler, antrenmanlar, pdf işleri, fikirler, günlükler) +
    ChromaDB (yerel vektör deposu, belge gömme/sorgulama).
 2. **Ajan kontrol düzlemi** — LangGraph durum makinesi: bir yönlendirici (router)
    düğümü gelen mesajı sınıflandırır (sohbet / PDF / görev), uygun düğüme yönlendirir.
@@ -67,7 +70,7 @@ Sistem birbirine geçen beş katmandan oluşur:
    PDF'lerde görsel/OCR'a düşer) → OpenRouter ile LaTeX ders notu → `pdflatex/lualatex`
    ile derleme (deterministik + LLM self-correction) → sınav + Anki flashcard; notlar
    ChromaDB'ye eklenir. Kaynak depodaki senkronizasyon/watcher/TUI parçaları çıkarıldı.
-5. **Ürün yüzeyi** — FastAPI backend + Vite/React/Tailwind koyu tema **3 sayfalı** SPA
+5. **Ürün yüzeyi** — FastAPI backend + Vite/React/Tailwind koyu tema **5 sayfalı** SPA
    (react-router) + Docker/Compose altyapısı. Canlı log akışı ve iki kanallı maliyet
    takibi dahil.
 
@@ -108,9 +111,9 @@ Tarayıcı (React SPA :8088)  ──HTTP/SSE──>  FastAPI (:8888)
 
 ### 1. OpenRouter anahtarını ayarla
 
-LLM özellikleri (`/chat`) için bir anahtar gerekir. Anahtar olmadan da sistem ayağa
+LLM özellikleri (`/chat`, AI analizi vb.) için bir anahtar gerekir. Anahtar olmadan da sistem ayağa
 kalkar; yalnızca sohbet `503` döner, geri kalan her şey (dashboard, görevler, antrenman,
-PDF yükleme) çalışır.
+fikirler, PDF yükleme vb.) çalışır.
 
 ```bash
 export OPENROUTER_API_KEY="sk-or-..."
@@ -122,6 +125,7 @@ okur):
 ```bash
 # .env
 OPENROUTER_API_KEY=sk-or-...
+RUNALYZE_TOKEN=YOUR_RUNALYZE_TOKEN  # Runalyze entegrasyonu için (opsiyonel)
 ```
 
 ### 2. Derle ve başlat
@@ -136,11 +140,12 @@ Bu iki servisi ayağa kaldırır (portlar `docker-compose.yml`'de tanımlı):
 
 ### 3. Aç ve kullan
 
-Tarayıcıda **http://localhost:8088** adresine git ve dört sayfa arasında gezin:
+Tarayıcıda **http://localhost:8088** adresine git ve sayfalar arasında gezin:
 - **Günüm** — günün görevleri/son tarihleri + bilişsel kapasite, yanında ajan sohbeti.
 - **PDF Otomasyonu** — geçmiş PDF'ler, API maliyet analizleri, PDF yükleme, canlı loglar.
 - **Görevler** — akademik & günlük görevler için ekle/düzenle/sil, notlar, materyaller.
-- **Antrenman** — planlı/tamamlanan antrenmanlar, metrikler, JSON/CSV/.FIT içe aktarma.
+- **Antrenman** — planlı/tamamlanan antrenmanlar, metrikler, Runalyze senkronizasyonu.
+- **Fikirler** — Serbest metin, materyal ve dosya yükleme ile fikir kaydı.
 
 ### 4. Sağlık kontrolü
 
@@ -200,19 +205,14 @@ Tüm ayarlar `config.py` içindeki tek, değişmez (frozen) `Settings` nesnesind
 |-----------------------|-----------------------------|--------------------------------------------------------------------------|
 | `OPENROUTER_API_KEY`  | _(yok)_                     | OpenRouter anahtarı. Yoksa `/chat` devre dışı (503), gerisi çalışır.    |
 | `CORS_ORIGINS`        | `http://localhost:3000`     | Virgülle ayrılmış izinli kaynaklar (origins).                           |
+| `RUNALYZE_TOKEN`      | _(yok)_                     | Runalyze'dan verileri çekmek için kişisel erişim belirteci.             |
 
 `config.py` içinden ayarlanabilen diğer önemli değerler (kod düzenlemesi gerekir):
 
-- **Ajan modelleri** (OpenRouter slug'ları): `router_model` = `google/gemini-3.5-flash`,
-  `chat_model` = `google/gemini-3.1-pro-preview`. Kayıtlı seçenekler: `haiku`, `opus`,
-  `gemini-flash`, `gemini-pro`.
-- **PDF motoru modelleri**: `pdf_transcriber_model` (vision gerekli, varsayılan
-  `gemini-3.1-pro-preview`), `pdf_exam_model`, `pdf_flashcard_model`, `pdf_validator_model`;
-  LaTeX motorları/zaman aşımı; `pdf_generate_exam` / `pdf_generate_flashcards` açma-kapama.
-- **Görev varsayılanları** (eksik bilgi hata vermesin diye): `default_discipline="General"`,
-  `default_estimated_hours=1.0`, `default_deadline_hour=23` / `default_deadline_minute=59`.
-- **Maliyet fiyatlandırması**: `model_pricing` (slug → 1M token başına prompt/completion USD),
-  `usage_csv_path` (kalıcı kullanım geçmişi).
+- **Ajan modelleri** (OpenRouter slug'ları): `router_model` = `google/gemini-3.5-flash`, vb.
+- **PDF motoru modelleri**: `pdf_transcriber_model`, `pdf_exam_model`, vb.
+- **Görev varsayılanları**: `default_discipline="General"`, vb.
+- **Runalyze Senkronizasyonu**: `runalyze_sync_interval_min`, `runalyze_sync_lookback_days` gibi ayarlar.
 
 ---
 
@@ -225,21 +225,17 @@ Tüm ayarlar `config.py` içindeki tek, değişmez (frozen) `Settings` nesnesind
 | POST   | `/chat/upload`                   | Sohbet eki (PDF/görüntü/.md/.json) → Markdown'a çevirip materyal döner. |
 | POST   | `/upload`                        | `multipart/form-data`: `file` (PDF) + opsiyonel `instructions`. Arka planda tam pipeline. |
 | POST   | `/tasks/{id}/notes`              | Göreve not ekle (PATCH/DELETE ile düzenle/sil).                        |
-| POST   | `/tasks/{id}/materials`          | Göreve materyal (bağlantı/dosya) ekle.                                 |
-| GET    | `/tasks/{id}/subtasks`           | Görevin alt görevlerini listele.                                       |
-| POST   | `/tasks/{id}/generate_subtasks`  | Yüksek kapasiteli modelle alt görev üret.                              |
-| POST   | `/notes/analyze`                 | Tüm notları analiz et → bilişsel yük + ilerleme metrikleri uygula.     |
-| GET    | `/dashboard_data`                | Görevler, bekleyen sayısı, güncel bilişsel yük.                         |
 | GET/POST | `/tasks`                       | Görevleri listele / oluştur.                                            |
 | PATCH/DELETE | `/tasks/{id}`              | Görevi güncelle / sil. `POST /tasks/{id}/complete` tamamlar.            |
+| POST   | `/notes/analyze`                 | Tüm notları analiz et → bilişsel yük + ilerleme metrikleri uygula.     |
 | GET/POST | `/workouts`                    | Antrenmanları listele / kaydet (status + opsiyonel metriklerle).        |
-| PATCH/DELETE | `/workouts/{id}`           | Antrenmanı güncelle / sil.                                              |
-| POST   | `/workouts/{id}/complete`        | Planlı antrenmanı tamamla (artık bilişsel yüke sayılır).               |
-| POST   | `/workouts/upload`               | JSON/CSV/.FIT veri dosyasını tamamlanmış antrenmanlara dönüştürür.      |
-| POST   | `/tasks/{id}/files`              | Göreve **ham dosya** ekle (işlenmez, yapay zekâya gönderilmez).        |
-| GET    | `/tasks/{id}/materials/{mid}/download` | Göreve ekli dosyayı indir.                                       |
+| POST   | `/workouts/sync/runalyze`        | Runalyze'dan son aktiviteleri manuel çekip antrenman olarak kaydeder.   |
+| GET/POST | `/ideas`                       | Serbest formatlı fikirleri listele / oluştur. PATCH/DELETE ile düzenle/sil. |
+| POST   | `/ideas/{id}/files`              | Fikre ham dosya ekle.                                                   |
+| GET/POST | `/journals`                    | Günlükleri listele / oluştur. DELETE ile sil.                           |
+| POST   | `/journals/ai-analyze`           | Günlükleri AI ile analiz edip görev/bilgi maddelerine (JournalItem) dönüştür. |
+| GET/POST | `/daily_notes`                 | Günlük notları listele / kaydet.                                        |
 | GET    | `/pdf_jobs`                      | Geçmiş PDF işleri (durum, maliyet, çıktılar).                          |
-| GET    | `/pdf_jobs/{id}/artifact/{name}` | Bir çıktıyı (notes/exam/flashcard) indir.                              |
 | GET    | `/usage`                         | İki kanallı maliyet/kullanım anlık görüntüsü (`pdf` vs `agent`).        |
 | GET    | `/logs/stream`                   | Canlı sistem logları (SSE).                                             |
 
@@ -249,21 +245,12 @@ Tüm ayarlar `config.py` içindeki tek, değişmez (frozen) `Settings` nesnesind
 # Dashboard verisi
 curl http://localhost:8000/dashboard_data | jq
 
-# Görev oluştur
-curl -X POST http://localhost:8000/tasks -H "Content-Type: application/json" \
-  -d '{"title":"3. bölümü oku","deadline":"2026-06-20T09:00","discipline":"Math","estimated_hours":2}' | jq
-
-# Antrenman kaydet (RPE 9, 60 dk → ağır yük; 12 saat bilişsel blok)
-curl -X POST http://localhost:8000/workouts -H "Content-Type: application/json" \
-  -d '{"duration_minutes":60,"rpe_score":9}' | jq
+# Runalyze Senkronizasyonunu Tetikle
+curl -X POST http://localhost:8000/workouts/sync/runalyze | jq
 
 # PDF yükle (tam pipeline arka planda çalışır)
 curl -X POST http://localhost:8000/upload \
   -F "file=@ders_notu.pdf" -F "instructions=Özet ve formüllere odaklan"
-
-# Maliyet sayaçları + canlı loglar
-curl http://localhost:8000/usage | jq
-curl -N http://localhost:8000/logs/stream
 ```
 
 ---
@@ -275,14 +262,14 @@ ile host'a yansıtılır — yani `docker compose down` sonrası veriler kaybolm
 
 ```
 data/
-├── athena.db        # SQLite: görevler, antrenmanlar, PDF işleri (WAL modu)
+├── athena.db        # SQLite: görevler, antrenmanlar, pdf işleri, fikirler (WAL modu)
 ├── chroma/          # ChromaDB kalıcı vektör deposu
 ├── uploads/         # /upload ile yüklenen ham PDF'ler
 ├── usage.csv        # Kalıcı API kullanım/maliyet geçmişi
-└── pdf/             # Motor çıktıları: output/ (notlar), exams/, flashcards/, temp/
+├── pdf/             # Motor çıktıları: output/ (notlar), exams/, flashcards/, temp/
+├── task_files/      # Görevlere eklenen ham dosyalar
+└── idea_files/      # Fikirlere eklenen ham dosyalar
 ```
-
-Sıfırlamak istersen `data/` dizinini silmen yeterli (konteynerler durmuşken).
 
 ---
 
@@ -291,29 +278,14 @@ Sıfırlamak istersen `data/` dizinini silmen yeterli (konteynerler durmuşken).
 PDF motoru artık **tamamen süreç-içi** (in-process) çalışır; ayrı bir komut/servis
 gerektirmez. Kaynak,
 [PDF-OCR-MD-LaTeX-PDF-Lecture-Automation](https://github.com/can-yaman-88/PDF-OCR-MD-LaTeX-PDF-Lecture-Automation)
-deposundan `tools/pdf_engine/automation/` altına gömülmüştür (senkronizasyon, watcher
-ve TUI parçaları çıkarıldı). Boru hattı:
+deposundan `tools/pdf_engine/automation/` altına gömülmüştür.
 
-1. **Metin çıkarımı** — `pymupdf4llm` ile metin katmanı Markdown'a çevrilir; metin yetersizse
-   sayfalar görsele çevrilip (`pdf2image`) vision modeline gönderilir (OCR).
+Boru hattı:
+1. **Metin çıkarımı** — `pymupdf4llm` ile metin katmanı Markdown'a çevrilir; metin yetersizse OCR.
 2. **Transkripsiyon** — OpenRouter modeliyle temiz bir LaTeX ders notu üretilir.
-3. **Derleme** — `lualatex/xelatex/pdflatex` ile derlenir; hata olursa önce deterministik
-   düzeltmeler, sonra LLM self-correction uygulanır (döngü korumalı).
-4. **Bilgi tabanı** — notlar ChromaDB'ye parçalanarak eklenir (sohbette geri getirilir).
-5. **Sınav + Flashcard** — aynı notlardan sınav PDF'i ve Anki kartları (CSV/APKG) üretilir.
-
-Her aşama `athena.pdf_engine` log isim alanından **canlı log akışına** yazılır ve her
-çağrının token/maliyeti **PDF** sayacına işlenir. Üretilen tüm çıktılar PDF Otomasyonu
-sayfasındaki "Geçmiş PDF'ler" listesinden indirilebilir.
-
-- Backend imajı (`Dockerfile.worker`) tam ders-notu derlemesi için genişletilmiş TeX
-  paketleri kurar: `texlive-latex-base/-extra`, `texlive-fonts-recommended`,
-  `texlive-luatex`, `texlive-xetex` + `poppler-utils` (yine de `texlive-full` **değil**).
-  **Ödünleşim:** imaj büyüktür ve ilk derleme yavaştır (tam pipeline tercihi).
-
-> ⚠️ Not: `texlive-scheme-basic` bir TeX Live *şeması*dır, Debian apt paketi değildir.
-> Debian/Ubuntu tabanlı imajda minimal karşılığı `texlive-latex-base`'dir. Üst akış
-> TeX Live net-installer kullanacaksan Dockerfile'ı buna göre değiştirebilirsin.
+3. **Derleme** — `lualatex/xelatex/pdflatex` ile derlenir; hata olursa önce deterministik düzeltmeler, sonra LLM self-correction uygulanır.
+4. **Bilgi tabanı** — notlar ChromaDB'ye parçalanarak eklenir.
+5. **Sınav + Flashcard** — aynı notlardan sınav PDF'i ve Anki kartları üretilir.
 
 ---
 
@@ -329,40 +301,23 @@ Athena/
 ├── .dockerignore
 ├── codes.md                    # Sohbet `/` komutlarının tam listesi
 ├── core/
-│   ├── schemas.py              # Task(category/subtype/parent/progress/notes/materials),
-│   │                           #   Note, Material, LoadAdjustment, PhysicalLoad, PdfJob
-│   ├── state.py                # AthenaState (route/command/attachments)
-│   ├── graph.py                # LangGraph: router(+slash) / chat / pdf / task / workout
-│   ├── commands.py             # Slash komut kayıt defteri + ayrıştırıcı
-│   ├── note_analyzer.py        # Notlardan metrik çıkarımı (yüksek kapasiteli model)
-│   ├── subtasks.py             # AI alt görev şeması + promptu
-│   ├── prompt_templates.py     # Yönlendirme + görev/plan çıkarımı + sistem promptları
-│   ├── log_bus.py              # Canlı log yayını (SSE için)
-│   ├── usage_callback.py       # Ajan LLM kullanımını "agent" sayacına yazar
-│   └── tools.py                # Grafiğe bağlı araç sarmalayıcıları
+│   ├── schemas.py              # Görev, Antrenman, Fikir, Günlük vb. şemalar
+│   ├── state.py                # AthenaState
+│   ├── graph.py                # LangGraph: router / chat / pdf / task / workout
+│   ├── commands.py             # Slash komutları
+│   ├── journal_analyzer.py     # Günlükleri ayrıştırıp JournalItem üreten araç
+│   └── ...                     
 ├── db/
-│   ├── sqlite_manager.py       # Async CRUD (görev/antrenman/pdf_jobs), idempotency
-│   ├── chroma_manager.py       # ChromaDB: add_document (oto chunk) + query
-│   └── exceptions.py
+│   ├── sqlite_manager.py       # Async CRUD işlemleri
+│   └── chroma_manager.py       # ChromaDB vektör araması
 ├── tools/
 │   ├── agentic_tools/
-│   │   ├── load_balancer.py    # calculate_cognitive_allowance (RPE×süre eşiği)
-│   │   └── hardcore_mode.py    # Kod yasak, Sokratik öğretmen zinciri
-│   ├── workout_import.py       # JSON/CSV/.FIT antrenman dosyası ayrıştırıcı
-│   └── pdf_engine/
-│       ├── wrapper.py          # process_academic_pdf (tam pipeline + ingest + iş kaydı)
-│       └── automation/         # Gömülü motor: ai_client, latex_engine, usage,
-│                               #   flashcard, engine_config, prompts/
-├── .claude/skills/ui-ux-pro-max/  # Kurulu tasarım sistemi skill'i (search.py + veri)
-└── frontend/                   # Vite + React + TS + Tailwind koyu tema, 3 sayfa
-    ├── design-system/MASTER.md # Skill ile üretilen tasarım sistemi (token kaynağı)
-    ├── src/{App,api,ui,main}.tsx/ts   # ui.tsx: token tabanlı Card/Button/Badge/Stat
-    ├── src/index.css           # Inter fontu + semantik token'lar + odak/geçiş kuralları
-    ├── src/pages/{HomePage,PdfPage,ManagePage,WorkoutsPage}.tsx
-    ├── src/components/{Layout,ChatTerminal,Dropzone,LogStream,UsageMeters,
-    │                   PdfHistory,TaskManager,TaskCard,Modal}.tsx
-    ├── Dockerfile              # node:20-alpine build → nginx:alpine
-    └── nginx.conf
+│   ├── workout_import.py       # JSON/CSV/.FIT dosya içe aktarıcı
+│   └── pdf_engine/             # Süreç içi çalışan PDF boru hattı
+└── frontend/                   # Vite + React + TS + Tailwind SPA
+    ├── src/pages/              # HomePage, PdfPage, ManagePage, WorkoutsPage, IdeasPage
+    ├── src/components/         # Arayüz bileşenleri
+    └── ...
 ```
 
 ---
@@ -373,23 +328,11 @@ Athena/
 OpenRouter anahtarı ayarlı değil. `OPENROUTER_API_KEY` ortam değişkenini (veya `.env`
 dosyasını) ayarlayıp servisi yeniden başlat.
 
-**Frontend'te CORS hatası**
-Backend yalnızca `CORS_ORIGINS`'teki kaynaklara izin verir (varsayılan
-`http://localhost:3000`). Farklı portta çalışıyorsan bu değişkeni güncelle.
+**Runalyze senkronizasyonu çalışmıyor / 400 Hatası veriyor**
+`.env` dosyanızda veya sistem değişkenlerinde `RUNALYZE_TOKEN` değerinin ayarlı olduğundan emin olun. 
 
 **İlk başlatma yavaş**
-ChromaDB ilk kullanımda `all-MiniLM-L6-v2` gömme modelini indirir. Bu tek seferlik;
-sonrası önbelleğe alınır.
+ChromaDB ilk kullanımda `all-MiniLM-L6-v2` gömme modelini indirir. Bu tek seferliktir.
 
 **PDF yükleniyor ama çıktı üretilmiyor**
-Motor süreç-içidir ama OpenRouter çağrıları için `OPENROUTER_API_KEY` gerekir; anahtar
-yoksa transkripsiyon başarısız olur ve iş "failed" işaretlenir. Ne olduğunu PDF
-Otomasyonu sayfasındaki **canlı loglardan** anlık izleyebilirsin. Derleme için TeX
-zinciri (Docker imajında gelir; yerelde `pdflatex/lualatex` kurulu olmalı) gereklidir.
-
-**`pip install` Arch/yönetilen ortamda "externally-managed-environment" hatası**
-Sistem Python'una kurma; `python3 -m venv .venv` ile sanal ortam oluşturup orada kur.
-
-**Docker imajı `texlive-scheme-basic` bulunamadı diye derlenmiyor**
-Bu bir TeX Live şemasıdır, apt paketi değil. `Dockerfile.worker` zaten doğru karşılığı
-(`texlive-latex-base`) kullanır; manuel değiştirdiysen geri al.
+OpenRouter API anahtarı yoksa transkripsiyon başarısız olur ve iş "failed" işaretlenir. Derleme için TeX zinciri gereklidir. Ne olduğunu "PDF Otomasyonu" sayfasındaki canlı loglardan izleyebilirsiniz.

@@ -26,30 +26,55 @@ class Command:
 
 # name -> Command. ``hints`` is read by the target node.
 COMMANDS: dict[str, Command] = {
-    "akademik": Command(
-        "akademik", "task_tool_node",
-        "Akademik görev oluştur (AI alt türü seçer).",
-        {"operation": "create", "category": "academic"},
+    "gorev": Command(
+        "gorev", "task_tool_node",
+        "Günlük görev ekler. Mesajdaki ekstra detaylar görevin notlarına kaydedilir.",
+        {"operation": "create", "category": "daily", "generate_subtasks": False},
     ),
-    "proje": Command(
-        "proje", "task_tool_node",
-        "Akademik PROJE görevi oluştur (yönerge/materyal eklenebilir).",
-        {"operation": "create", "category": "academic", "subtype": "project"},
+    "agorev": Command(
+        "agorev", "task_tool_node",
+        "Akademik görev ekler. Alt görev parçalaması yapılmaz.",
+        {"operation": "create", "category": "academic", "generate_subtasks": False},
     ),
-    "odev": Command(
-        "odev", "task_tool_node",
-        "Akademik ÖDEV görevi oluştur.",
-        {"operation": "create", "category": "academic", "subtype": "assignment"},
+    "altgorev": Command(
+        "altgorev", "task_tool_node",
+        "Günlük görev ekler ve verilen sayı kadar alt göreve böler.",
+        {"operation": "create", "category": "daily", "generate_subtasks": True},
+    ),
+    "altakademik": Command(
+        "altakademik", "task_tool_node",
+        "Akademik görev ekler ve verilen sayı kadar alt göreve böler.",
+        {"operation": "create", "category": "academic", "generate_subtasks": True},
+    ),
+    "fikir": Command(
+        "fikir", "idea_extractor_node",
+        "Girdi içinden parantez içindeki değer kadar fikir üretir.",
+        {"operation": "extract_ideas"},
+    ),
+    "antrenman": Command(
+        "antrenman", "workout_tool_node",
+        "Tek bir antrenman ekler. Yorumlar notlar kısmına eklenir.",
+        {"mode": "single", "status": "completed"},
     ),
     "seans": Command(
-        "seans", "task_tool_node",
-        "Akademik ÇALIŞMA SEANSI görevi oluştur.",
-        {"operation": "create", "category": "academic", "subtype": "study_session"},
+        "seans", "session_node",
+        "Akademik görevin altına bir seans ekler.",
+        {"operation": "create_session"},
     ),
-    "gunluk": Command(
-        "gunluk", "task_tool_node",
-        "Günlük (general) görev oluştur.",
-        {"operation": "create", "category": "daily"},
+    "plan": Command(
+        "plan", "task_tool_node",
+        "Akademik bir hedef için plan girdisinden görevler/alt görevler oluşturur.",
+        {"operation": "create_plan", "category": "academic", "generate_subtasks": True},
+    ),
+    "wplan": Command(
+        "wplan", "workout_tool_node",
+        "Birden fazla antrenmanı içeren bir planı içe aktarır.",
+        {"status": "planned"},
+    ),
+    "aralik": Command(
+        "aralik", "task_tool_node",
+        "Aralıklı görev oluşturur. Alt görevler de aralıklı olur.",
+        {"operation": "create", "category": "academic", "is_spaced_repetition": True, "generate_subtasks": True},
     ),
     "duzenle": Command(
         "duzenle", "task_tool_node",
@@ -71,21 +96,6 @@ COMMANDS: dict[str, Command] = {
         "Görevin son tarihini değiştir. Biçim: /ertele <ad> <yeni tarih/saat>.",
         {"operation": "reschedule"},
     ),
-    "antrenman": Command(
-        "antrenman", "workout_tool_node",
-        "Tek bir tamamlanmış antrenman ekle (süre + RPE).",
-        {"mode": "single", "status": "completed"},
-    ),
-    "antrenman-planla": Command(
-        "antrenman-planla", "workout_tool_node",
-        "Tek bir planlı antrenman ekle (süre + RPE).",
-        {"mode": "single", "status": "planned"},
-    ),
-    "plan": Command(
-        "plan", "workout_tool_node",
-        "Çoklu günlük antrenman planını içe aktar (metin ya da ekli .md/.json).",
-        {"mode": "plan"},
-    ),
     "not": Command(
         "not", "task_tool_node",
         "Bir göreve not ekle. Biçim: /not <görev ipucu>: <not metni>",
@@ -105,38 +115,69 @@ COMMANDS: dict[str, Command] = {
 
 # A few English aliases for convenience.
 _ALIASES = {
-    "academic": "akademik",
-    "daily": "gunluk",
-    "edit": "duzenle",
-    "workout": "antrenman",
-    "note": "not",
-    "help": "yardim",
-    "günlük": "gunluk",
-    "ödev": "odev",
+    "agörev": "agorev",
+    "altgörev": "altgorev",
+    "altakademik": "altakademik",
+    "görev": "gorev",
+    "aralık": "aralik",
     "yardım": "yardim",
-    "tamamla": "complete",
-    "delete": "sil",
-    "reschedule": "ertele",
-    "postpone": "ertele",
 }
 
 
-def parse_command(text: str) -> tuple[Optional[Command], str]:
-    """Return (Command, remaining_text) if ``text`` starts with a known ``/cmd``.
+import re
 
-    The command token is stripped; the remainder is what the node should act on.
-    Unknown ``/words`` return ``(None, text)`` so the LLM router handles them.
+def parse_command(text: str) -> tuple[Optional[Command], str, Optional[int]]:
+    """Return (Command, remaining_text, N) if ``text`` contains known ``/cmd``s.
+
+    The command tokens are stripped. If multiple commands are found, the first one 
+    dictates the route, but their hints are merged.
     """
-    stripped = text.lstrip()
-    if not stripped.startswith("/"):
-        return None, text
-    head, _, rest = stripped[1:].partition(" ")
-    key = head.strip().lower()
-    key = _ALIASES.get(key, key)
-    cmd = COMMANDS.get(key)
-    if cmd is None:
-        return None, text
-    return cmd, rest.strip()
+    pattern = r"(?:^|\s)/([a-zA-ZğüşıöçĞÜŞİÖÇ]+)(?:\((\d+)\))?(?:\s|$)"
+    matches = list(re.finditer(pattern, text))
+    
+    primary_cmd = None
+    merged_hints = {}
+    n_val = None
+    
+    # Strip tokens from right to left to preserve indices
+    rest = text
+    for m in reversed(matches):
+        key = m.group(1).lower()
+        key = _ALIASES.get(key, key)
+        if COMMANDS.get(key) is not None:
+            # Carefully remove the token
+            start = m.start()
+            end = m.end()
+            if text[start:end].startswith(" "):
+                rest = rest[:start] + " " + rest[end:]
+            else:
+                rest = rest[:start] + rest[end:]
+
+    # Left to right to find primary command and merge hints
+    for m in matches:
+        key = m.group(1).lower()
+        key = _ALIASES.get(key, key)
+        cmd = COMMANDS.get(key)
+        if cmd is not None:
+            if primary_cmd is None:
+                primary_cmd = cmd
+            
+            # Merge hints. Later commands overwrite conflicting hints of earlier ones,
+            # or we can just update dict.
+            merged_hints.update(cmd.hints)
+            
+            if m.group(2) and n_val is None:
+                try:
+                    n_val = int(m.group(2))
+                except ValueError:
+                    pass
+
+    if primary_cmd is not None:
+        from dataclasses import replace
+        final_cmd = replace(primary_cmd, hints=merged_hints)
+        return final_cmd, rest.strip(), n_val
+        
+    return None, text, None
 
 
 def help_text() -> str:
