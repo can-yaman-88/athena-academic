@@ -53,8 +53,8 @@ COMMANDS: dict[str, Command] = {
     ),
     "antrenman": Command(
         "antrenman", "workout_tool_node",
-        "Tek bir antrenman ekler. Yorumlar notlar kısmına eklenir.",
-        {"mode": "single", "status": "completed"},
+        "Tek bir planlı antrenman ekler. Yorumlar notlar kısmına eklenir.",
+        {"mode": "single", "status": "planned"},
     ),
     "seans": Command(
         "seans", "session_node",
