@@ -136,11 +136,11 @@ export default function IdeaEditorModal({
             {materials.map((m) => (
               <li key={m.id} className="text-zinc-300">
                 {m.kind === "link" ? (
-                  <a href={m.source} target="_blank" rel="noreferrer" className="text-sky-300 hover:underline">
+                  <a href={m.source} target="_blank" rel="noreferrer" className="text-primary-300 hover:underline">
                     🔗 {m.name}
                   </a>
                 ) : (
-                  <a href={ideaFileUrl(idea.id, m.id)} target="_blank" rel="noreferrer" className="text-zinc-200 hover:text-emerald-300">
+                  <a href={ideaFileUrl(idea.id, m.id)} target="_blank" rel="noreferrer" className="text-zinc-200 hover:text-primary-300">
                     📄 {m.name}
                   </a>
                 )}
@@ -174,13 +174,13 @@ export default function IdeaEditorModal({
                   value={matName}
                   onChange={(e) => setMatName(e.target.value)}
                   placeholder="ad"
-                  className="w-24 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500"
+                  className="w-24 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-primary-500"
                 />
                 <input
                   value={matUrl}
                   onChange={(e) => setMatUrl(e.target.value)}
                   placeholder="https://…"
-                  className="flex-1 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500"
+                  className="flex-1 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-primary-500"
                 />
                 <Button
                   variant="ghost"

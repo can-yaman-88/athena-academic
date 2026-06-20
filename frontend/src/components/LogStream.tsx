@@ -49,7 +49,7 @@ export default function LogStream({
           <span className="flex items-center gap-1.5 text-xs text-zinc-500">
             <span
               className={`h-2 w-2 rounded-full ${
-                connected ? "bg-emerald-400" : "bg-zinc-600"
+                connected ? "bg-primary-400" : "bg-zinc-600"
               }`}
             />
             {connected ? "bağlı" : "bağlanıyor…"}

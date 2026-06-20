@@ -26,6 +26,16 @@ def _env_int(name: str, default: int) -> int:
     return value if value > 0 else default
 
 
+def _env_path(name: str, default: Path) -> Path:
+    """Read a filesystem path from the environment, falling back to ``default``.
+
+    Lets deployments and tests point the SQLite/Chroma stores at a writable
+    location without editing code (e.g. a temp dir in pytest, or a host volume).
+    """
+    value = os.environ.get(name)
+    return Path(value).expanduser() if value else default
+
+
 class Settings(BaseModel):
     """Project-wide settings with sensible local defaults."""
 
@@ -36,13 +46,17 @@ class Settings(BaseModel):
     data_dir: Path = Field(default=_BASE_DIR / "data")
 
     # --- SQLite ------------------------------------------------------------
-    sqlite_path: Path = Field(default=_BASE_DIR / "data" / "athena.db")
+    sqlite_path: Path = Field(
+        default_factory=lambda: _env_path("ATHENA_SQLITE_PATH", _BASE_DIR / "data" / "athena.db")
+    )
     db_busy_timeout_ms: int = Field(default=5000, gt=0)
     db_max_retries: int = Field(default=5, ge=0)
     db_retry_base_delay: float = Field(default=0.1, gt=0)
 
     # --- ChromaDB ----------------------------------------------------------
-    chroma_persist_dir: Path = Field(default=_BASE_DIR / "data" / "chroma")
+    chroma_persist_dir: Path = Field(
+        default_factory=lambda: _env_path("ATHENA_CHROMA_DIR", _BASE_DIR / "data" / "chroma")
+    )
     chroma_collection: str = Field(default="academic_documents")
     embedding_model: str = Field(default="all-MiniLM-L6-v2")
 
@@ -161,7 +175,15 @@ class Settings(BaseModel):
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             o.strip()
-            for o in os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+            for o in os.environ.get(
+                "CORS_ORIGINS",
+                # Cover both localhost and 127.0.0.1 on the common dev/preview
+                # ports — browsers treat them as distinct origins, so allowing
+                # only one is a frequent "Failed to fetch" footgun.
+                "http://localhost:3000,http://127.0.0.1:3000,"
+                "http://localhost:5173,http://127.0.0.1:5173,"
+                "http://localhost:8088,http://127.0.0.1:8088",
+            ).split(",")
             if o.strip()
         ]
     )

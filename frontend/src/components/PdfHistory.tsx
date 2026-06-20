@@ -49,7 +49,7 @@ export default function PdfHistory({ jobs }: { jobs: PdfJob[] }) {
                     href={artifactUrl(j.id, a)}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded border border-line-strong px-2 py-0.5 text-xs text-zinc-300 hover:border-emerald-500 hover:text-emerald-300"
+                    className="rounded border border-line-strong px-2 py-0.5 text-xs text-zinc-300 hover:border-primary-500 hover:text-primary-300"
                     title={name}
                   >
                     {ext}

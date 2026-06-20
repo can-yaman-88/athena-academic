@@ -26,7 +26,7 @@ export default function NotionEditor({
     content: initialContent,
     editorProps: {
         attributes: {
-          class: `prose prose-invert prose-emerald max-w-none focus:outline-none ${fullPage ? "min-h-[calc(96vh-4rem)]" : "min-h-[200px]"}`,
+          class: `prose prose-invert max-w-none focus:outline-none ${fullPage ? "min-h-[calc(96vh-4rem)]" : "min-h-[200px]"}`,
         },
       handleKeyDown: (view, event) => {
         if (event.key === "+") {

@@ -2,31 +2,31 @@
 
 Sohbet kutusunda `/` ile başlayan komutlar **yapay zekânın yönlendirme kararını
 beklemeden** doğrudan ilgili işleme gider. Komut, mesajın başında olmalıdır;
-geri kalan metin komutun girdisi olarak kullanılır.
+geri kalan metin komutun girdisi olarak kullanılır. Tarih belirtmezsen görev
+**tarihsiz** oluşturulur (varsayılan bir son tarih atanmaz).
 
 | Komut | Ne yapar | Örnek |
 |-------|----------|-------|
-| `/akademik <görev>` | Akademik görev oluşturur; alt türü (proje/ödev/seans) AI seçer. | `/akademik Termodinamik vize çalışması` |
-| `/proje <görev>` | Akademik **PROJE** görevi. Yönerge PDF'i ekleyebilirsin; AI alt görevler üretir. | `/proje Derin öğrenme dönem projesi` (+PDF) |
-| `/odev <görev>` | Akademik **ÖDEV** görevi. | `/odev Lineer cebir problem seti 4` |
-| `/seans <görev>` | Akademik **ÇALIŞMA SEANSI** görevi. | `/seans 2 saat integral tekrarı` |
-| `/gunluk <görev>` | Günlük (general) görev. | `/gunluk Market alışverişi` |
-| `/duzenle <tarif>` | Mevcut görevi düzenler. Tarih verilmezse **bugünkü**, yoksa **en yakın gelecekteki** görev. | `/duzenle koşuyu 1.5 saate çıkar` |
-| `/complete [tarih] <ad>` | Görevi tamamlar. Ad tam eşleşmezse **en benzer** görev tamamlanır. | `/complete 2026-06-20 lineer cebir` |
-| `/sil [tarih] <ad>` | Görevi siler (tam eşleşme yoksa en benzer). | `/sil market` |
-| `/ertele <ad> <tarih>` | Görevin son tarihini değiştirir. | `/ertele proje 2026-07-01` |
-| `/antrenman <metin>` | Tek antrenman ekler (süre + RPE). | `/antrenman 45 dk tempo koşu RPE 7` |
-| `/plan` (+ekli .md/.json ya da metin) | Çoklu gün antrenman planını içe aktarır. | `/plan` + aylık plan .md dosyası |
-| `/not <ipucu>: <metin>` | İlgili göreve not ekler. | `/not termodinamik: bugün 2 saat çok zorlandım` |
-| `/yardim` | Bu komut listesini gösterir. | `/yardim` |
+| `/görev <metin>` | Günlük (general) görev oluşturur. Ekstra detaylar notlara yazılır. | `/görev Market alışverişi` |
+| `/agörev <metin>` | Akademik görev oluşturur (alt görev üretmez). | `/agörev Lineer cebir problem seti 4` |
+| `/altgörev(n) <metin>` | Günlük görev oluşturur ve `n` alt göreve böler. | `/altgörev(3) Sunum hazırlığı` |
+| `/altakademik(n) <metin>` | Akademik görev oluşturur ve `n` alt göreve böler. | `/altakademik(5) Dönem projesi` |
+| `/fikir(n) <metin>` | Verilen metinden en fazla `n` fikir çıkarır. | `/fikir(3) uzun beyin fırtınası notu` |
+| `/antrenman <metin>` | Tek bir tamamlanan antrenman ekler (süre + RPE). | `/antrenman 45 dk tempo koşu RPE 7` |
+| `/seans <metin>` | Akademik bir görevin altına çalışma seansı ekler (@görev_adı). | `/seans 2 saat integral tekrarı @analiz` |
+| `/plan <metin>` | Akademik bir hedeften görev + alt görevler üretir. | `/plan Termodinamik final hazırlığı` |
+| `/aralık(n) <metin>` | Aralıklı tekrar (spaced repetition) görevi; alt görevler de aralıklı olur. | `/aralık Bölüm 3 tekrarı` |
+| `/yardim` | Komut listesini gösterir. | `/yardim` |
 
-İngilizce takma adlar da kabul edilir: `/academic` `/daily` `/edit` `/workout`
-`/note` `/help`.
+Türkçe/İngilizce takma adlar: `/gorev` `/agorev` `/altgorev` `/aralik` `/yardım`.
 
 ## Notlar
 - Komut tanınmazsa mesaj normal şekilde AI yönlendiricisine gider (hata vermez).
-- Sohbete **dosya (PDF/görüntü)** ekleyebilirsin: PDF'ler istisnasız Markdown'a
-  çevrilir, görüntüler vision modeliyle okunur. Eklenen materyal, oluşturulan
-  görevin içine iliştirilir ve proje görevlerinde alt görev üretiminde kullanılır.
+  Boş olmayan her girdi en az bir görev/sonuç üretir; "çıkaramadım" denmez.
+- Görevleri **tamamlama, silme, not ekleme ve tarih düzenleme** işlemleri Görevler
+  ve Günüm sayfalarındaki görev kartlarından yapılır (sohbet komutu değil).
+- Sohbete **dosya (PDF/görüntü)** ekleyebilirsin: PDF'ler Markdown'a çevrilir,
+  görüntüler vision modeliyle okunur. Eklenen materyal, oluşturulan görevin içine
+  iliştirilir ve proje görevlerinde alt görev üretiminde kullanılır.
 - Akademik görevlerde ilerleme (progress), notlar ve materyaller bulunur; günlük
   görevler sadeleştirilmiştir.

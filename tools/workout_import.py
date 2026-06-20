@@ -1,9 +1,9 @@
 """Parse workout files (JSON / CSV / .FIT) into normalized workout dicts.
 
 Each returned dict maps onto :class:`core.schemas.PhysicalLoad` fields; the upload
-endpoint marks them ``completed`` (they are recorded actuals and count toward
-cognitive load). Parsing is defensive — unknown/missing fields fall back to sane
-defaults rather than raising, so a partial file still imports.
+endpoint marks them ``completed`` (they are recorded actuals). Parsing is
+defensive — unknown/missing fields fall back to sane defaults rather than raising,
+so a partial file still imports.
 """
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
-// Shared UI primitives — refined-dark (Linear/Vercel) language: layered elevated
-// surfaces, hairline translucent borders, soft shadows, crisp emerald focus.
+// Shared UI primitives — "Aurora Indigo" language: layered elevated surfaces,
+// hairline translucent borders, soft shadows, iris/violet primary + crisp focus.
 // These carry most of the restyle since every page composes them.
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
@@ -38,7 +38,7 @@ type Size = "sm" | "md";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-emerald-500 text-zinc-950 shadow-sm hover:bg-emerald-400 hover:shadow-glow disabled:opacity-50",
+    "bg-primary-500 text-white shadow-sm hover:brightness-110 hover:shadow-glow disabled:opacity-50",
   ghost:
     "border border-line-strong bg-white/[0.02] text-zinc-200 hover:border-zinc-500 hover:bg-white/[0.05] disabled:opacity-50",
   danger:
@@ -72,10 +72,10 @@ export function Button({
 }
 
 const tones: Record<string, string> = {
-  emerald: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+  emerald: "border-primary-500/30 bg-primary-500/10 text-primary-300",
   amber: "border-amber-500/30 bg-amber-500/10 text-amber-300",
   rose: "border-rose-500/30 bg-rose-500/10 text-rose-300",
-  sky: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+  sky: "border-primary-500/30 bg-primary-500/10 text-primary-300",
   zinc: "border-line-strong bg-white/[0.04] text-zinc-300",
 };
 
@@ -107,10 +107,10 @@ export function Stat({
   tone?: keyof typeof tones;
 }) {
   const accent: Record<string, string> = {
-    emerald: "text-emerald-400",
+    emerald: "text-primary-400",
     amber: "text-amber-400",
     rose: "text-rose-400",
-    sky: "text-sky-400",
+    sky: "text-primary-400",
     zinc: "text-zinc-100",
   };
   return (
@@ -126,7 +126,8 @@ export function Stat({
   );
 }
 
-export function fmtDeadline(iso: string): string {
+export function fmtDeadline(iso: string | null | undefined): string {
+  if (!iso) return "tarihsiz";
   try {
     const d = new Date(iso);
     return d.toLocaleString(undefined, {

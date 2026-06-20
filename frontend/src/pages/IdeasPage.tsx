@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
-import { getIdeas, createIdea, deleteIdea, type Idea } from "../api";
+import {
+  getIdeas,
+  createIdea,
+  deleteIdea,
+  getDailyNotes,
+  type Idea,
+  type DailyNote,
+} from "../api";
 import { Card, Button } from "../ui";
 import IdeaEditorModal from "../components/IdeaEditorModal";
+import { Paperclip, Plus, CalendarDays } from "lucide-react";
 
 function preview(html: string): string {
   const tmp = document.createElement("div");
@@ -9,18 +17,39 @@ function preview(html: string): string {
   return (tmp.textContent || tmp.innerText || "").trim();
 }
 
+function fmtDay(iso: string): string {
+  try {
+    return new Date(iso + "T00:00:00").toLocaleDateString("tr-TR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
 export default function IdeasPage() {
   const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [dailyNotes, setDailyNotes] = useState<DailyNote[]>([]);
   const [editing, setEditing] = useState<Idea | null>(null);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
 
   const refresh = async () => {
     try {
-      setIdeas(await getIdeas());
+      const [ideaList, noteList] = await Promise.all([getIdeas(), getDailyNotes()]);
+      setIdeas(ideaList);
+      // Newest first; backend already orders by date DESC but sort defensively.
+      setDailyNotes(
+        [...noteList]
+          .filter((n) => preview(n.content))
+          .sort((a, b) => b.date.localeCompare(a.date)),
+      );
       setError("");
     } catch (e) {
-      setError(`Fikirler yüklenemedi: ${(e as Error).message}`);
+      setError(`Veriler yüklenemedi: ${(e as Error).message}`);
     }
   };
 
@@ -43,21 +72,52 @@ export default function IdeasPage() {
   };
 
   return (
-    <div className="h-full">
+    <div className="flex h-full flex-col gap-4 overflow-y-auto">
+      {error && (
+        <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-300">
+          {error}
+        </div>
+      )}
+
+      <Card
+        title="Günüm"
+        right={
+          <span className="text-[11px] text-zinc-500">
+            {dailyNotes.length} gün
+          </span>
+        }
+        bodyClassName="flex flex-col gap-2 p-4"
+      >
+        {dailyNotes.length === 0 && (
+          <p className="text-sm text-zinc-500">
+            Henüz günlük not yok. Ana sayfadaki “Günüm” alanından yazmaya başla.
+          </p>
+        )}
+        {dailyNotes.map((note) => (
+          <div
+            key={note.id}
+            className="rounded-xl border border-line bg-elevated/60 p-3 transition-colors hover:border-line-strong"
+          >
+            <div className="flex items-center gap-1.5 text-xs font-medium text-accent-400">
+              <CalendarDays size={12} /> {fmtDay(note.date)}
+            </div>
+            <p className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-sm text-zinc-300">
+              {preview(note.content)}
+            </p>
+          </div>
+        ))}
+      </Card>
+
       <Card
         title="Fikirler"
         right={
           <Button variant="ghost" disabled={creating} onClick={() => void handleNew()}>
-            {creating ? "Ekleniyor…" : "+ Fikir Ekle"}
+            <Plus size={15} strokeWidth={2.25} />
+            {creating ? "Ekleniyor…" : "Fikir Ekle"}
           </Button>
         }
-        bodyClassName="flex flex-col gap-3 overflow-y-auto p-4"
+        bodyClassName="flex flex-col gap-3 p-4"
       >
-        {error && (
-          <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-300">
-            {error}
-          </div>
-        )}
         {ideas.length === 0 && (
           <p className="text-sm text-zinc-500">
             Henüz fikir yok. “+ Fikir Ekle” ile başla.
@@ -70,15 +130,15 @@ export default function IdeasPage() {
               className="group relative cursor-pointer rounded-xl border border-line bg-elevated/60 p-4 transition-colors hover:border-line-strong"
               onClick={() => setEditing(idea)}
             >
-              <h3 className="truncate font-semibold text-emerald-400">
+              <h3 className="truncate font-semibold text-primary-400">
                 {idea.title || "Başlıksız fikir"}
               </h3>
               <div className="mt-2 line-clamp-4 text-sm text-zinc-400">
                 {preview(idea.content) || "Boş…"}
               </div>
               {idea.materials.length > 0 && (
-                <div className="mt-2 text-xs text-zinc-500">
-                  📎 {idea.materials.length} materyal
+                <div className="mt-2 flex items-center gap-1 text-xs text-zinc-500">
+                  <Paperclip size={11} /> {idea.materials.length} materyal
                 </div>
               )}
               <button

@@ -69,7 +69,7 @@ function initialSessions(): ChatSession[] {
     : [
         {
           role: "system",
-          text: "Athena-Academic hazır. Soru sor, görev/PDF/antrenman iste, ya da /yardim yaz.",
+          text: "Athena hazır. Soru sor, görev/PDF/antrenman iste, ya da /yardim yaz.",
         },
       ];
   return [
@@ -133,7 +133,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       lines: [
         {
           role: "system",
-          text: "Athena-Academic hazır. Yeni sohbete hoş geldiniz.",
+          text: "Athena hazır. Yeni sohbete hoş geldiniz.",
         },
       ],
     };
@@ -150,7 +150,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             id: generateId(),
             title: "Yeni Sohbet",
             updatedAt: Date.now(),
-            lines: [{ role: "system", text: "Athena-Academic hazır." }],
+            lines: [{ role: "system", text: "Athena hazır." }],
           };
           setActiveSessionId(newS.id);
           return [newS];

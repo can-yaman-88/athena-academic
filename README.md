@@ -1,15 +1,18 @@
-# Athena-Academic
+# Athena
 
-Otonom, ajan tabanlı (agentic) bir akademik asistan sistemi. PDF ders materyallerini
+Otonom, ajan tabanlı (agentic) bir kişisel akademik asistan sistemi. PDF ders materyallerini
 **tam bir boru hattıyla** işler (OCR/Markdown → LaTeX ders notu → derlenmiş PDF →
 sınav → Anki flashcard) ve notları bilgi tabanına ekler; görevlerini, günlüklerini (journal)
-ve antrenmanlarını yönetir; fiziksel yorgunluğuna göre bilişsel iş yükünü dengeler; API
-maliyetini iki ayrı sayaçta (PDF vs. ajan) izler. Tüm LLM erişimi **OpenRouter** üzerinden yapılır;
-yerelde yalnızca ChromaDB gömme modeli çalışır.
+ve antrenmanlarını yönetir; API maliyetini iki ayrı sayaçta (PDF vs. ajan) izler.
+Tüm LLM erişimi **OpenRouter** üzerinden yapılır; yerelde yalnızca ChromaDB gömme modeli çalışır.
+
+> **Arayüz** "Aurora Indigo" kimliğiyle yeniden tasarlandı: iris/menekşe vurgulu,
+> indigo-siyah temelli koyu tema, Lucide SVG ikonlar, `ui-ux-pro-max` ile üretilmiş
+> tasarım sistemi. Eski emerald/OLED tema tamamen değiştirildi.
 
 Arayüz beş sayfadan oluşur:
-- **Günüm** — solda günün görevleri/son tarihleri ve bilişsel kapasite, sağda ajan sohbeti
-  (dosya ekleme + `/` komutları ile).
+- **Günüm** — solda günün notu, görevleri/son tarihleri (alt görevler dahil filtreli),
+  sağda ajan sohbeti (dosya ekleme + `/` komutları ile).
 - **PDF Otomasyonu** — solda geçmiş PDF'ler, ortada (üst) API maliyet/kullanım analizleri +
   (alt) PDF yükleme, altta tam genişlikte **canlı sistem logları** (Notion tarzı
   ortadan açılan büyütme penceresiyle).
@@ -17,7 +20,6 @@ Arayüz beş sayfadan oluşur:
   notlar, materyaller, **ham dosya ekleri**) ve **Günlük** görevler için tam CRUD.
 - **Antrenman** — planlı/tamamlanan antrenmanlar, TrainingPeaks tarzı opsiyonel metrikler
   (mesafe/tempo/hız/nabız), **JSON/CSV/.FIT** veri içe aktarma, **Runalyze** entegrasyonu ve çoklu-gün plan içe aktarma.
-  Antrenmanlar yalnızca **tamamlandığında** bilişsel yüke eklenir.
 - **Fikirler (Ideas)** — Serbest biçimli notların, fikirlerin ve dosyaların kaydedilebildiği, yapay zeka işlemesi gerektirmeyen esnek çalışma alanı.
 
 ### Öne çıkan yetenekler
@@ -29,8 +31,7 @@ Arayüz beş sayfadan oluşur:
 - **Sohbete dosya ekleme**: PDF → her zaman Markdown, görüntü → vision modeli. Eklenen
   materyal göreve iliştirilir ve proje görevlerinde **AI alt görev üretiminde** kullanılır.
 - **Notlar + analiz**: göreve not ekle; "Notları analiz et" ile yüksek kapasiteli model
-  notlardan metrik çıkarır — çalışma zorluğunu **o güne ait bilişsel yüke** ekler, başka
-  görevlerdeki ilerlemeyi ilgili göreve işler.
+  notlardan **ilerleme** sinyallerini çıkarır ve ilgili göreve işler.
 - **Günlükler ve AI Analizi (Journal)**: Günlük formatında alınan notlar saklanır ve `ai-analyze` uç noktasıyla yüksek kapasiteli AI modeli tarafından analiz edilerek yapısal ögelere (JournalItem) dönüştürülür.
 - **Runalyze Entegrasyonu**: Antrenman verilerini otomatik olarak veya manuel tetiklemeyle Runalyze API üzerinden arka planda senkronize edip sisteme işler.
 - **Çoklu-gün antrenman planı**: bir aylık planı metin/`.md`/`.json` olarak yapıştır/yükle,
@@ -63,7 +64,7 @@ Sistem birbirine geçen beş katmandan oluşur:
 2. **Ajan kontrol düzlemi** — LangGraph durum makinesi: bir yönlendirici (router)
    düğümü gelen mesajı sınıflandırır (sohbet / PDF / görev), uygun düğüme yönlendirir.
    Görev düğümü serbest metinden görev alanlarını çıkarıp gerçekten kalıcılaştırır.
-3. **Ajan araçları** — bilişsel yük dengeleyici ve "hardcore" Sokratik öğretmen modu
+3. **Ajan araçları** — "hardcore" Sokratik öğretmen modu
    (`@tool` ile LangGraph'a bağlanabilir).
 4. **PDF motoru** — `tools/pdf_engine/automation/` altına gömülü (vendored),
    tamamen süreç-içi asenkron motor: `pymupdf4llm` ile metin çıkarımı (taranmış
@@ -141,7 +142,7 @@ Bu iki servisi ayağa kaldırır (portlar `docker-compose.yml`'de tanımlı):
 ### 3. Aç ve kullan
 
 Tarayıcıda **http://localhost:8088** adresine git ve sayfalar arasında gezin:
-- **Günüm** — günün görevleri/son tarihleri + bilişsel kapasite, yanında ajan sohbeti.
+- **Günüm** — günün notu + görevleri/son tarihleri (alt görevler dahil filtreli), yanında ajan sohbeti.
 - **PDF Otomasyonu** — geçmiş PDF'ler, API maliyet analizleri, PDF yükleme, canlı loglar.
 - **Görevler** — akademik & günlük görevler için ekle/düzenle/sil, notlar, materyaller.
 - **Antrenman** — planlı/tamamlanan antrenmanlar, metrikler, Runalyze senkronizasyonu.
@@ -191,8 +192,26 @@ echo "VITE_API_URL=http://localhost:8000" > .env.local
 npm run dev        # Vite dev sunucusu http://localhost:3000
 ```
 
-> Not: `cors_origins` varsayılanı `http://localhost:3000`. Frontend'i başka bir
-> portta çalıştırırsan backend'te `CORS_ORIGINS` ortam değişkenini güncelle.
+> Not: `cors_origins` varsayılanı artık hem `localhost` hem `127.0.0.1` için
+> yaygın geliştirme portlarını (3000/5173/8088) kapsar. Tarayıcı `localhost` ile
+> `127.0.0.1`'i **ayrı kaynak** sayar; ikisini de izinli tutmak "Failed to fetch"
+> hatasını önler. Farklı bir port kullanırsan `CORS_ORIGINS`'i güncelle.
+
+### Testler
+
+```bash
+.venv/bin/python -m pytest        # tüm backend testleri (tests/)
+```
+
+Suite, geçici (yazılabilir) bir SQLite dosyası kullanır; gerçek `data/athena.db`'ye
+dokunmaz. Görev/antrenman/fikir/günlük CRUD'unu, slash komut ayrıştırmayı, SM-2
+aralıklı tekrar matematiğini, not normalizasyonunu ve uçtan uca HTTP yollarını kapsar.
+
+> **Sık karşılaşılan hata — "attempt to write a readonly database":**
+> `data/athena.db` Docker (root) tarafından oluşturulduğunda yerelde
+> (`uvicorn`/pytest ile) **yazılamaz** ve tüm yazma uç noktaları 500 döner.
+> Çözüm: dosyanın sahipliğini düzelt (`sudo chown $USER data/athena.db*`) **veya**
+> `ATHENA_SQLITE_PATH` / `ATHENA_CHROMA_DIR` ile yazılabilir bir konum göster.
 
 ---
 
@@ -204,8 +223,10 @@ Tüm ayarlar `config.py` içindeki tek, değişmez (frozen) `Settings` nesnesind
 | Değişken              | Varsayılan                  | Açıklama                                                                 |
 |-----------------------|-----------------------------|--------------------------------------------------------------------------|
 | `OPENROUTER_API_KEY`  | _(yok)_                     | OpenRouter anahtarı. Yoksa `/chat` devre dışı (503), gerisi çalışır.    |
-| `CORS_ORIGINS`        | `http://localhost:3000`     | Virgülle ayrılmış izinli kaynaklar (origins).                           |
+| `CORS_ORIGINS`        | `localhost`+`127.0.0.1` (3000/5173/8088) | Virgülle ayrılmış izinli kaynaklar (origins).              |
 | `RUNALYZE_TOKEN`      | _(yok)_                     | Runalyze'dan verileri çekmek için kişisel erişim belirteci.             |
+| `ATHENA_SQLITE_PATH`  | `data/athena.db`            | SQLite dosyasının yolu (test/dağıtım için yazılabilir bir konuma yönlendir). |
+| `ATHENA_CHROMA_DIR`   | `data/chroma`               | ChromaDB kalıcı dizininin yolu.                                          |
 
 `config.py` içinden ayarlanabilen diğer önemli değerler (kod düzenlemesi gerekir):
 
@@ -227,7 +248,7 @@ Tüm ayarlar `config.py` içindeki tek, değişmez (frozen) `Settings` nesnesind
 | POST   | `/tasks/{id}/notes`              | Göreve not ekle (PATCH/DELETE ile düzenle/sil).                        |
 | GET/POST | `/tasks`                       | Görevleri listele / oluştur.                                            |
 | PATCH/DELETE | `/tasks/{id}`              | Görevi güncelle / sil. `POST /tasks/{id}/complete` tamamlar.            |
-| POST   | `/notes/analyze`                 | Tüm notları analiz et → bilişsel yük + ilerleme metrikleri uygula.     |
+| POST   | `/notes/analyze`                 | Tüm notları analiz et → ilerleme (progress) metriklerini uygula.       |
 | GET/POST | `/workouts`                    | Antrenmanları listele / kaydet (status + opsiyonel metriklerle).        |
 | POST   | `/workouts/sync/runalyze`        | Runalyze'dan son aktiviteleri manuel çekip antrenman olarak kaydeder.   |
 | GET/POST | `/ideas`                       | Serbest formatlı fikirleri listele / oluştur. PATCH/DELETE ile düzenle/sil. |

@@ -7,7 +7,7 @@ evaluator to score the user's recall quality based on task notes.
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -47,6 +47,8 @@ Aşağıdaki metrikleri kesinlikle verilen kurallara göre belirle:
 * **Skor 5 (Effortless Perfection):** Kusursuz, zahmetsiz ve anında hatırlama. Konu tamamen zihne kazınmış.
 
 *(Not: Eğer öğrenci sadece "Tamamlandı" gibi düz bir metin girmiş ve efordan bahsetmemişse, standart olarak 4 puan ver.)*
+
+*Yalnızca hatırlama kanıtına bak: konuyla ilgisiz yorumları, ortam ya da motivasyon notlarını skora karıştırma. Skoru öğrencinin konuyu ne kadar hatırladığına göre ver; ne kadar süre çalıştığına değil.*
 
 **2. Gelecek Oturum İçin Uyarı (Future Warning)**
 Eğer verdiğin skor 4'ten küçükse, öğrencinin notlarında belirttiği spesifik zorlanma noktalarını tespit et. Bir sonraki tekrar görevi yaratıldığında öğrenciye gösterilmek üzere kısa, motive edici ve spesifik bir uyarı cümlesi yaz. Eğer skor 4 veya 5 ise bu alanı boş (null) bırak.
@@ -146,7 +148,7 @@ async def handle_spaced_repetition_completion(
         return
 
     # Combine all notes for analysis
-    all_notes = "\\n".join(n.text for n in completed_task.notes)
+    all_notes = "\n".join(n.text for n in completed_task.notes)
     
     # 1. Evaluate Recall
     callbacks = []
@@ -177,7 +179,10 @@ async def handle_spaced_repetition_completion(
         return
 
     # 4. Create Next Task
-    next_date = completed_task.deadline + timedelta(days=next_interval)
+    # The completed task may have no deadline (deadline is optional); fall back to
+    # "now" so the repetition still gets scheduled instead of crashing.
+    base_date = completed_task.deadline or datetime.now()
+    next_date = base_date + timedelta(days=next_interval)
     
     from core.schemas import Note
     notes_to_add = []

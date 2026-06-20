@@ -27,7 +27,8 @@ function htmlHasText(html: string): boolean {
   return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim().length > 0;
 }
 
-function toDatetimeLocal(iso: string): string {
+function toDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return "";
   try {
     const d = new Date(iso);
     const off = d.getTimezoneOffset();
@@ -101,24 +102,27 @@ export default function TaskCard({
                 </Badge>
               </div>
               <div className="mt-0.5 text-xs text-zinc-500">
-                {task.discipline} · {task.estimated_hours}h · {fmtDeadline(task.deadline)}
+                {task.discipline}
+                {task.estimated_hours != null && ` · ${task.estimated_hours}h`}
+                {" · "}
+                {fmtDeadline(task.deadline)}
               </div>
             </>
           ) : (
             <div className="grid grid-cols-2 gap-2 text-xs">
               <input
-                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500 col-span-2"
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-primary-500 col-span-2"
                 value={editForm.title}
                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
               />
               <input
                 type="datetime-local"
-                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500"
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-primary-500"
                 value={editForm.deadline}
                 onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
               />
               <input
-                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500"
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-primary-500"
                 value={editForm.discipline}
                 onChange={(e) => setEditForm({ ...editForm, discipline: e.target.value })}
               />
@@ -126,12 +130,12 @@ export default function TaskCard({
                 type="number"
                 min={0.5}
                 step={0.5}
-                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500"
-                value={editForm.estimated_hours}
-                onChange={(e) => setEditForm({ ...editForm, estimated_hours: Number(e.target.value) })}
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-primary-500"
+                value={editForm.estimated_hours ?? ""}
+                onChange={(e) => setEditForm({ ...editForm, estimated_hours: e.target.value === "" ? null : Number(e.target.value) })}
               />
               <select
-                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500"
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-primary-500"
                 value={editForm.category}
                 onChange={(e) => setEditForm({ ...editForm, category: e.target.value as "academic" | "daily" })}
               >
@@ -140,7 +144,7 @@ export default function TaskCard({
               </select>
               {editForm.category === "academic" && (
                 <select
-                  className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500"
+                  className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-primary-500"
                   value={editForm.subtype}
                   onChange={(e) => setEditForm({ ...editForm, subtype: e.target.value as "project" | "assignment" | "study_session" })}
                 >
@@ -153,7 +157,7 @@ export default function TaskCard({
                 type="number"
                 min={0}
                 max={100}
-                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-emerald-500"
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-primary-500"
                 value={editForm.progress}
                 onChange={(e) => setEditForm({ ...editForm, progress: Number(e.target.value) })}
               />
@@ -164,7 +168,8 @@ export default function TaskCard({
                     run(async () => {
                       await updateTask(task.id, {
                         title: editForm.title,
-                        deadline: editForm.deadline,
+                        // An empty datetime-local field means "no deadline" → null.
+                        deadline: editForm.deadline ? editForm.deadline : null,
                         discipline: editForm.discipline,
                         estimated_hours: editForm.estimated_hours,
                         category: editForm.category,
@@ -204,7 +209,7 @@ export default function TaskCard({
             <span>{task.progress}%</span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-            <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-[width] duration-500" style={{ width: `${task.progress}%` }} />
+            <div className="h-full rounded-full bg-gradient-to-r from-primary-500 to-primary-400 transition-[width] duration-500" style={{ width: `${task.progress}%` }} />
           </div>
         </div>
       )}
@@ -266,9 +271,9 @@ export default function TaskCard({
               {task.materials.map((m) => (
                 <li key={m.id} className="text-zinc-300">
                   {m.kind === "link" ? (
-                    <a href={m.source} target="_blank" rel="noreferrer" className="text-sky-300 hover:underline">🔗 {m.name}</a>
+                    <a href={m.source} target="_blank" rel="noreferrer" className="text-primary-300 hover:underline">🔗 {m.name}</a>
                   ) : (
-                    <a href={taskFileUrl(task.id, m.id)} target="_blank" rel="noreferrer" className="text-zinc-200 hover:text-emerald-300">📄 {m.name}</a>
+                    <a href={taskFileUrl(task.id, m.id)} target="_blank" rel="noreferrer" className="text-zinc-200 hover:text-primary-300">📄 {m.name}</a>
                   )}
                 </li>
               ))}
@@ -281,8 +286,8 @@ export default function TaskCard({
               
               {showLinkInput && (
                 <>
-                  <input value={matName} onChange={(e) => setMatName(e.target.value)} placeholder="ad" className="w-24 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500" />
-                  <input value={matUrl} onChange={(e) => setMatUrl(e.target.value)} placeholder="https://…" className="flex-1 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500" />
+                  <input value={matName} onChange={(e) => setMatName(e.target.value)} placeholder="ad" className="w-24 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-primary-500" />
+                  <input value={matUrl} onChange={(e) => setMatUrl(e.target.value)} placeholder="https://…" className="flex-1 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-primary-500" />
                   <Button variant="ghost" disabled={!matName.trim() || !matUrl.trim()} onClick={() => run(async () => { await addMaterial(task.id, { kind: "link", name: matName.trim(), source: matUrl.trim() }); setMatName(""); setMatUrl(""); setShowLinkInput(false); })}>Ekle</Button>
                 </>
               )}
@@ -309,7 +314,7 @@ export default function TaskCard({
                   value={newSubtaskTitle}
                   onChange={(e) => setNewSubtaskTitle(e.target.value)}
                   placeholder="Alt görev başlığı..."
-                  className="flex-1 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-emerald-500"
+                  className="flex-1 rounded border border-line-strong bg-surface-2 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-primary-500"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && newSubtaskTitle.trim()) {
                       import("../api").then(({ createTask }) => {
