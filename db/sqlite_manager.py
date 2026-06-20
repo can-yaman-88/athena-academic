@@ -504,7 +504,7 @@ class SQLiteManager:
         return Task(
             id=row["id"],
             title=row["title"],
-            deadline=datetime.fromisoformat(row["deadline"]),
+            deadline=datetime.fromisoformat(row["deadline"]) if row["deadline"] else None,
             discipline=row["discipline"],
             status=TaskStatus(row["status"]),
             estimated_hours=row["estimated_hours"],

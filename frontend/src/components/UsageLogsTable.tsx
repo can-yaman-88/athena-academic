@@ -90,7 +90,7 @@ export default function UsageLogsTable() {
                   <td className="px-4 py-3 text-right">
                     <span className="text-zinc-300">{log.completion_tokens}</span> <span className="text-zinc-600 text-xs">tok</span>
                   </td>
-                  <td className="px-4 py-3 text-right text-emerald-400">
+                  <td className="px-4 py-3 text-right text-primary-400">
                     ${parseFloat(log.cost_usd || "0").toFixed(5)}
                   </td>
                 </tr>

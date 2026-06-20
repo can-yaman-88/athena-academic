@@ -14,7 +14,7 @@ import NotionEditor from "../components/NotionEditor";
 import { useSync } from "../SyncContext";
 
 const inputCls =
-  "rounded-lg border border-line-strong bg-surface-2 px-2.5 py-1.5 text-sm text-zinc-100 outline-none focus:border-emerald-500";
+  "rounded-lg border border-line-strong bg-surface-2 px-2.5 py-1.5 text-sm text-zinc-100 outline-none focus:border-primary-500";
 
 function Metrics({ w }: { w: Workout }) {
   const items: [string, string][] = [];

@@ -40,7 +40,7 @@ export default function Dropzone({ onUploaded }: { onUploaded?: () => void }) {
         onClick={() => inputRef.current?.click()}
         className={`flex flex-1 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed text-center transition ${
           dragging
-            ? "border-emerald-400 bg-emerald-400/10"
+            ? "border-primary-400 bg-primary-400/10"
             : "border-line-strong hover:border-zinc-500"
         }`}
       >
@@ -63,7 +63,7 @@ export default function Dropzone({ onUploaded }: { onUploaded?: () => void }) {
         value={instructions}
         onChange={(e) => setInstructions(e.target.value)}
         placeholder="İsteğe bağlı yönerge (örn. 'sadece özet ve formüller')"
-        className="rounded-lg border border-line-strong bg-surface-2 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-emerald-500"
+        className="rounded-lg border border-line-strong bg-surface-2 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-primary-500"
         onClick={(e) => e.stopPropagation()}
       />
       <div className="flex items-center justify-between gap-2">

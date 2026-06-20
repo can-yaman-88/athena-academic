@@ -4,6 +4,7 @@ import { Badge, Card } from "../ui";
 import ChatTerminal from "../components/ChatTerminal";
 import TaskCard from "../components/TaskCard";
 import NotionEditor from "../components/NotionEditor";
+import { NotebookPen, ListTodo, CheckCircle2 } from "lucide-react";
 
 const getTodayDateStr = () => {
   const d = new Date();
@@ -79,11 +80,12 @@ export default function HomePage() {
     .slice()
     .sort((a, b) => (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999"));
     
-  const filteredTasks = tasks.filter(t => {
+  // Does a single task pass the active time + status filters?
+  const matches = (t: typeof tasks[number]) => {
     // Tamamlanma filter
     if (statusFilter === "Tamamlandı" && t.status !== "completed") return false;
     if (statusFilter === "Bekliyor" && t.status !== "pending") return false;
-    
+
     // Zaman filter
     if (timeFilter !== "Tümü") {
       if (!t.deadline) return false; // no deadline → not part of any time window
@@ -100,9 +102,25 @@ export default function HomePage() {
       }
       if (deadline > limit) return false;
     }
-    
+
     return true;
-  });
+  };
+
+  // A top-level task is visible when it matches OR any of its subtasks matches —
+  // so filtering by "Bugün" still surfaces a parent whose subtask is due today.
+  // When the parent itself matches, show all its subtasks (full task view);
+  // otherwise show only the subtasks that matched the filter.
+  const visibleTasks = tasks
+    .filter((t) => t.parent_id === null)
+    .map((parent) => {
+      const subs = tasks.filter((s) => s.parent_id === parent.id);
+      const parentMatches = matches(parent);
+      const matchingSubs = subs.filter(matches);
+      if (parentMatches) return { parent, subs };
+      if (matchingSubs.length > 0) return { parent, subs: matchingSubs };
+      return null;
+    })
+    .filter((x): x is { parent: typeof tasks[number]; subs: typeof tasks } => x !== null);
 
   return (
     <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-2">
@@ -123,41 +141,51 @@ export default function HomePage() {
         )}
 
         {/* Daily Note Editor */}
-        <div className="relative flex flex-col rounded-xl border border-line bg-surface-1 overflow-hidden shrink-0 min-h-[250px]">
+        <div className="relative flex flex-col rounded-xl border border-line bg-surface overflow-hidden shrink-0 min-h-[250px]">
           <div className="flex items-center justify-between border-b border-line bg-surface-2/50 px-3 py-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Günüm Notu</span>
-            <span className="text-[10px] text-zinc-500">{savingNote ? "Kaydediliyor..." : "Kaydedildi"}</span>
+            <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary-300">
+              <NotebookPen size={13} strokeWidth={2.25} /> Günüm Notu
+            </span>
+            <span className="flex items-center gap-1 text-[10px] text-zinc-500">
+              {savingNote ? (
+                <>Kaydediliyor…</>
+              ) : (
+                <><CheckCircle2 size={11} className="text-accent-400" /> Kaydedildi</>
+              )}
+            </span>
           </div>
           <div className="flex-1 overflow-y-auto">
             <NotionEditor initialContent={noteContent} onChange={handleNoteChange} />
           </div>
         </div>
 
-        <div className="text-[11px] uppercase tracking-wider text-zinc-500 mt-2">
-          Görevler & son tarihler
+        <div className="mt-2 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-zinc-500">
+          <ListTodo size={13} strokeWidth={2.25} /> Görevler &amp; son tarihler
         </div>
         
         {/* Filters */}
-        <div className="flex flex-col gap-2 rounded-lg bg-elevated/60 p-2 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-zinc-500 w-16">Zaman:</span>
+        <div className="flex flex-col gap-2 rounded-xl border border-line bg-elevated/60 p-2.5 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="w-16 text-zinc-500">Zaman:</span>
             {["Bugün", "Bu hafta", "Bu ay", "Tümü"].map(f => (
-              <button 
-                key={f} 
-                onClick={() => setTimeFilter(f as any)} 
-                className={`rounded px-2 py-1 ${timeFilter === f ? "bg-emerald-500/20 text-emerald-300" : "text-zinc-400 hover:bg-zinc-800"}`}
+              <button
+                key={f}
+                onClick={() => setTimeFilter(f as any)}
+                aria-pressed={timeFilter === f}
+                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${timeFilter === f ? "bg-primary-500/20 text-primary-200 ring-1 ring-inset ring-primary-500/30" : "text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-100"}`}
               >
                 {f}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-zinc-500 w-16">Durum:</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="w-16 text-zinc-500">Durum:</span>
             {["Tamamlandı", "Bekliyor", "Tümü"].map(f => (
-              <button 
-                key={f} 
-                onClick={() => setStatusFilter(f as any)} 
-                className={`rounded px-2 py-1 ${statusFilter === f ? "bg-emerald-500/20 text-emerald-300" : "text-zinc-400 hover:bg-zinc-800"}`}
+              <button
+                key={f}
+                onClick={() => setStatusFilter(f as any)}
+                aria-pressed={statusFilter === f}
+                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${statusFilter === f ? "bg-primary-500/20 text-primary-200 ring-1 ring-inset ring-primary-500/30" : "text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-100"}`}
               >
                 {f}
               </button>
@@ -165,15 +193,15 @@ export default function HomePage() {
           </div>
         </div>
 
-        {filteredTasks.length === 0 && (
+        {visibleTasks.length === 0 && (
           <p className="text-sm text-zinc-500">Henüz görev yok. Sohbetten ekleyebilirsin.</p>
         )}
         <ul className="flex flex-col gap-2">
-          {filteredTasks.filter((t) => t.parent_id === null).map((t) => (
+          {visibleTasks.map(({ parent: t, subs }) => (
             <li key={t.id}>
               <TaskCard
                 task={t}
-                subtasks={tasks.filter((s) => s.parent_id === t.id)}
+                subtasks={subs}
                 onChanged={() => {
                   import("../api").then(({ getDashboard }) => {
                     getDashboard().then((d) => setData(d)).catch((e) => setError(e.message));

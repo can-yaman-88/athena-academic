@@ -143,8 +143,8 @@ export default function ChatTerminal() {
   }
 
   const color = {
-    user: "text-sky-300",
-    agent: "text-emerald-300",
+    user: "text-primary-300",
+    agent: "text-primary-300",
     system: "text-zinc-500",
   } as const;
 
@@ -350,7 +350,7 @@ export default function ChatTerminal() {
               const space = (cmdMatch!.index! > 0 && !prefix.endsWith(" ")) ? " " : "";
               setInput(prefix + space + c + " ");
             }}
-            className="rounded border border-line-strong px-2 py-0.5 text-zinc-400 hover:border-emerald-500 hover:text-emerald-300"
+            className="rounded border border-line-strong px-2 py-0.5 text-zinc-400 hover:border-primary-500 hover:text-primary-300"
           >
             {c} <span className="text-zinc-600">{d}</span>
           </button>
@@ -404,7 +404,7 @@ export default function ChatTerminal() {
           </button>
           <button
             onClick={handleNewChat}
-            className="text-zinc-400 hover:text-emerald-400 text-sm font-medium ml-2"
+            className="text-zinc-400 hover:text-primary-400 text-sm font-medium ml-2"
             title="Yeni Sohbet"
           >
             ＋ Yeni
@@ -421,7 +421,7 @@ export default function ChatTerminal() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Mesajlarda ara..."
-            className="flex-1 rounded border border-line-strong bg-elevated px-2 py-1 text-sm text-zinc-200 outline-none focus:border-emerald-500"
+            className="flex-1 rounded border border-line-strong bg-elevated px-2 py-1 text-sm text-zinc-200 outline-none focus:border-primary-500"
           />
           <button
             onClick={() => {
@@ -492,9 +492,9 @@ export default function ChatTerminal() {
             <div
               className={`relative max-w-[85%] rounded-lg px-4 py-2 ${
                 l.role === "user"
-                  ? "bg-zinc-800 text-sky-200"
+                  ? "bg-zinc-800 text-primary-200"
                   : l.role === "agent"
-                  ? "bg-elevated text-emerald-200 border border-line"
+                  ? "bg-elevated text-primary-200 border border-line"
                   : "bg-transparent text-zinc-500"
               }`}
             >
@@ -522,7 +522,7 @@ export default function ChatTerminal() {
                   {l.role === "user" && (
                     <button
                       onClick={() => handleEdit(i)}
-                      className="text-zinc-400 hover:text-sky-300 px-1"
+                      className="text-zinc-400 hover:text-primary-300 px-1"
                       title="Düzenle"
                     >
                       ✏️
@@ -531,7 +531,7 @@ export default function ChatTerminal() {
                   {l.role === "agent" && (
                     <button
                       onClick={() => handleRegenerate(i)}
-                      className="text-zinc-400 hover:text-emerald-300 px-1"
+                      className="text-zinc-400 hover:text-primary-300 px-1"
                       title="Yeniden Üret"
                     >
                       🔄
@@ -586,14 +586,14 @@ export default function ChatTerminal() {
           {attachments.map((a) => (
             <span
               key={a.id}
-              className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300"
+              className="inline-flex items-center gap-1 rounded border border-primary-500/40 bg-primary-500/10 px-2 py-0.5 text-xs text-primary-300"
             >
               📎 {a.name}
               <button
                 onClick={() =>
                   setAttachments((p) => p.filter((x) => x.id !== a.id))
                 }
-                className="text-emerald-400/70 hover:text-emerald-200"
+                className="text-primary-400/70 hover:text-primary-200"
               >
                 ×
               </button>
@@ -627,7 +627,7 @@ export default function ChatTerminal() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={isTextareaSend}
           placeholder="Mesaj yaz… ('/' ile komutlar, '@' ile bahset)"
-          className="flex-1 rounded-lg border border-line-strong bg-elevated px-3 py-2 font-mono text-sm text-zinc-100 outline-none focus:border-emerald-500 resize-none min-h-[2.5rem] max-h-[8rem]"
+          className="flex-1 rounded-lg border border-line-strong bg-elevated px-3 py-2 font-mono text-sm text-zinc-100 outline-none focus:border-primary-500 resize-none min-h-[2.5rem] max-h-[8rem]"
         />
         <button
           onClick={() => setShowExpand(true)}
@@ -639,7 +639,7 @@ export default function ChatTerminal() {
         <button
           onClick={() => void handleSend()}
           disabled={busy}
-          className="rounded-lg bg-emerald-500/90 px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-emerald-400 disabled:opacity-50 transition-colors"
+          className="rounded-lg bg-primary-500/90 px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-primary-400 disabled:opacity-50 transition-colors"
         >
           Gönder
         </button>
@@ -682,7 +682,7 @@ export default function ChatTerminal() {
                   setShowExpand(false);
                   void handleSend();
                 }}
-                className="rounded-lg bg-emerald-500/90 px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-emerald-400"
+                className="rounded-lg bg-primary-500/90 px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-primary-400"
               >
                 Gönder
               </button>

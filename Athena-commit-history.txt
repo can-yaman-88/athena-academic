@@ -1,3 +1,74 @@
+15.45
+Tüm Jarvis ismi geçen yerleri Athena yap.
+Bir de günüm sayfasındaki filtreler alt görevleri kapsamıyor. Yani o filtreyi uyguladığımda bugüne bir alt görev varsa ana görev bugüne olmadığı için gözükmüyor. Bunu da düzelt.
+
+
+
+
+15.35
+Sistem promptlarında bir sorun olduğunu görüyorum bir de bazen uzun planlarda hata alıyorum. Sanırım bir bellek hatası.
+Senden istediğim şey projedeki tüm sistem promptlarını geliştirmen, derinleştirmen.
+Bazen sadece planı attığımda net bir görev çıkaramadım gibi yanıtlar alıyorum, bu gibi durumlar için de bir önlem koy. /görev, /plan olsun veya diğer komutlar olsun benden herhangi bir şunu yap bunu yap girdisi beklemeden sistem promptlarında bu çoktan eklenmiş olmalı. Eksta plan oluştur veya şöyle yap dememe gerek kalmamalı.
+Ek olarak da eğer ben tarih eklememişsem tarih her zaman boş dönmeli.
+Ek olarak da günüm yazılarının fikir defteri sayfasında sıralanmasını istiyorum.
+
+
+
+
+20.06.2026
+Sistemde çok fazla bug var, komutlar olsun genel mimari olsun düzgün çalışmıyor. Senden bu projeyi tamamen baştan yapmanı ui ux skilini kullanarak tamamen baştan dizayn etmeni ve tüm fonksiyonların ve her şeyin düzgün çalıştığını test etmeni istiyorum.
+Readme dosyasına sadık kalmak zorunda değilsin. Eğer sana mantıklı gelen bir alan varsa onu koru, eğer değişmesi gerek diye düşünüyorsan da değiştir ve en iyi hale getir.
+Sana tam yetki veriyorum.
+
+
+
+
+10.16
+Sunucuya pull ettiğimde @ komutunun hiçbir şey listelemediğini fark ettim.
+
+
+
+
+Antrenmanlara eklediğim notlarda hata var. Kaydedildi gözküyor fakat pencereyi kapatıp antrenmana tekrar tıkladığımda bu sefer notum silinmiş oluyor ve not kısmı boş oluyor.
+
+
+
+
+07.15
+Sorun devam ediyor. /plan komutuyla oluşturulan planlar görevlere eklenmiyor.
+12 görev oluşturuldu:
+- 'Aşama 1: Sözdizimi ve Bellek Modeli — Okuma + Bellek Çizimi' (academic/study_session), 2026-06-21 23:59, 2h
+- 'Aşama 1: Kodlama Pratiği — Fizik formüllerini Python syntax'ına çevir' (academic/study_session), 2026-06-21 23:59, 1h
+- 'Aşama 2: Kontrol Akışları — Okuma + İzleme Tablosu (Trace Table)' (academic/study_session), 2026-06-22 23:59, 2h
+- 'Aşama 2: Kodlama Pratiği — Döngülerle liste/matris algoritmaları yaz ve dry-run yap' (academic/study_session), 2026-06-22 23:59, 1.5h
+- 'Aşama 3: Fonksiyonel Modülerlik — def, *args/**kwargs, LEGB kapsamı çalış' (academic/study_session), 2026-06-23 23:59, 2h
+- 'Aşama 3: Kodlama Pratiği — Matris shape kontrolü yapan helper fonksiyonlar yaz' (academic/study_session), 2026-06-23 23:59, 1.5h
+- 'Aşama 4: İleri Veri Manipülasyonu — List/dict comprehensions, map/filter/zip çalış' (academic/study_session), 2026-06-24 23:59, 2h
+- 'Aşama 4: Kodlama Pratiği — Dot product & Riemann toplamı yaz, zaman karmaşıklığını analiz et' (academic/study_session), 2026-06-24 23:59, 1.5h
+- 'Aşama 5: OOP Mimari — class, dunder metodlar, kalıtım oku + UML diyagramı çiz' (academic/study_session), 2026-06-25 23:59, 2h
+- 'Aşama 5: Kodlama Pratiği — Matrix sınıfı __add__ ve __mul__ metodlarını kağıda dök' (academic/study_session), 2026-06-25 23:59, 1.5h
+- 'Aşama 6: Hata Yönetimi — try/except/else/finally, raise mekanizmaları + hata senaryoları yaz' (academic/study_session), 2026-06-26 23:59, 1.5h
+- 'Aşama 6: Kodlama Pratiği — Önceki fonksiyon/sınıflara hata yönetim bloklarını entegre et' (academic/study_session), 2026-06-26 23:59, 1h
+Böyle bir çıktı almama rağmen yine de görevler oluşturulmadı.
+
+
+
+
+06.52
+Plan komutuyla oluşturulan plan iyi çalışıyor fakat oluşturulan plandaki görevler eklenmiyor. Loglarda yanıtın geldiğini görsem de herhangi bir görev oluşturma bilgisi görmedim ki arayüzde de oluşmuyor.
+
+
+
+
+
+06.30
+Antrenman planı yazma yerinde yazdıklarım başka sayfaya gittiğimde kayboluyor.
+Günüm notuna yazılanlar da aynı şekilde başka sayfaya gittiğim anda kayboluyor.
+/altakademik komutu çalışıyor fakat komut listesinde gözükmüyor.
+
+
+
+
 20.44
 Seans doğru çalışıyor ama alt görev bitirildi dediğimde o alt göreve seans eklemesine rağmen görevi tamamlandı olarak işaretlemiyor.
 

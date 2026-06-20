@@ -30,7 +30,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from langchain_core.messages import HumanMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from config import settings
 from core.graph import build_athena_graph
@@ -193,6 +193,18 @@ class IdeaUpdateRequest(BaseModel):
     content: Optional[str] = None
 
 
+def _blank_deadline_to_none(value: Any) -> Any:
+    """Treat an empty/whitespace deadline string as 'no deadline' (None).
+
+    The frontend's datetime-local input yields "" when the user clears the
+    field; without this a bare "" would fail datetime parsing (422). An omitted
+    date must always mean a null deadline.
+    """
+    if isinstance(value, str) and not value.strip():
+        return None
+    return value
+
+
 class TaskCreateRequest(BaseModel):
     title: str = Field(min_length=1)
     deadline: Optional[datetime] = None
@@ -205,6 +217,10 @@ class TaskCreateRequest(BaseModel):
     parent_id: Optional[str] = None
     status: Optional[TaskStatus] = None
 
+    _normalize_deadline = field_validator("deadline", mode="before")(
+        _blank_deadline_to_none
+    )
+
 
 class TaskUpdateRequest(BaseModel):
     title: Optional[str] = Field(default=None, min_length=1)
@@ -215,6 +231,10 @@ class TaskUpdateRequest(BaseModel):
     category: Optional[TaskCategory] = None
     subtype: Optional[AcademicSubtype] = None
     progress: Optional[int] = Field(default=None, ge=0, le=100)
+
+    _normalize_deadline = field_validator("deadline", mode="before")(
+        _blank_deadline_to_none
+    )
 
 
 class NoteCreateRequest(BaseModel):
@@ -1081,7 +1101,7 @@ async def create_workout(request: Request, body: WorkoutRequest) -> dict[str, An
 
 @app.post("/workouts/{load_id}/complete")
 async def complete_workout(request: Request, load_id: str) -> dict[str, Any]:
-    """Mark a planned workout completed so it counts toward cognitive load."""
+    """Mark a planned workout as completed (it becomes a recorded actual)."""
     db: SQLiteManager = request.app.state.sqlite
     try:
         load = await db.get_physical_load(load_id)

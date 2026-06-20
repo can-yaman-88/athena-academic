@@ -18,7 +18,7 @@ function Meter({
         <span className="text-sm font-medium text-zinc-200">{title}</span>
         <span
           className={`text-sm font-semibold ${
-            tone === "emerald" ? "text-emerald-400" : "text-sky-400"
+            tone === "emerald" ? "text-primary-400" : "text-primary-400"
           }`}
         >
           {usd(cat?.total_cost_usd ?? 0)}

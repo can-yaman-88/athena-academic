@@ -66,45 +66,10 @@ COMMANDS: dict[str, Command] = {
         "Akademik bir hedef için plan girdisinden görevler/alt görevler oluşturur.",
         {"operation": "create_plan", "category": "academic", "generate_subtasks": True},
     ),
-    "wplan": Command(
-        "wplan", "workout_tool_node",
-        "Birden fazla antrenmanı içeren bir planı içe aktarır.",
-        {"status": "planned"},
-    ),
     "aralik": Command(
         "aralik", "task_tool_node",
         "Aralıklı görev oluşturur. Alt görevler de aralıklı olur.",
         {"operation": "create", "category": "academic", "is_spaced_repetition": True, "generate_subtasks": True},
-    ),
-    "duzenle": Command(
-        "duzenle", "task_tool_node",
-        "Mevcut bir görevi düzenle (tarih verilmezse bugünkü, yoksa en yakın gelecekteki).",
-        {"operation": "update"},
-    ),
-    "complete": Command(
-        "complete", "task_tool_node",
-        "Görevi tamamla. Biçim: /complete [tarih] <ad>. Tam ad yoksa en benzer görev.",
-        {"operation": "complete"},
-    ),
-    "sil": Command(
-        "sil", "task_tool_node",
-        "Görevi sil. Biçim: /sil [tarih] <ad>. Tam ad yoksa en benzer görev.",
-        {"operation": "delete"},
-    ),
-    "ertele": Command(
-        "ertele", "task_tool_node",
-        "Görevin son tarihini değiştir. Biçim: /ertele <ad> <yeni tarih/saat>.",
-        {"operation": "reschedule"},
-    ),
-    "not": Command(
-        "not", "task_tool_node",
-        "Bir göreve not ekle. Biçim: /not <görev ipucu>: <not metni>",
-        {"operation": "note"},
-    ),
-    "default": Command(
-        "default", "chat_node",
-        "Kalıcı bir model atar. Kullanım: /default @model_adi",
-        {"mode": "default"},
     ),
     "yardim": Command(
         "yardim", "chat_node",

@@ -56,14 +56,14 @@ export default function TaskManager() {
       {/* two sections */}
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-2">
         <section className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Akademik</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-primary-400">Akademik</h3>
           {academic.length === 0 && <p className="text-sm text-zinc-500">Akademik görev yok.</p>}
           {academic.map((t) => (
             <TaskCard key={t.id} task={t} subtasks={subtasksOf(t.id)} onChanged={() => void refresh()} />
           ))}
         </section>
         <section className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-sky-400">Günlük</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-primary-400">Günlük</h3>
           {daily.length === 0 && <p className="text-sm text-zinc-500">Günlük görev yok.</p>}
           {daily.map((t) => (
             <TaskCard key={t.id} task={t} subtasks={subtasksOf(t.id)} onChanged={() => void refresh()} />

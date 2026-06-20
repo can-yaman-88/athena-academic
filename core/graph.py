@@ -40,6 +40,7 @@ from core.prompt_templates import (
     IdeaExtractionList,
     RouteDecision,
     SessionExtraction,
+    TaskExtraction,
     TaskExtractionList,
     WorkoutPlan,
 )
@@ -215,8 +216,8 @@ def _resolve_target_task(
             hint = target_hint.lower()
             hits = [t for t in cands if hint in t.title.lower()]
             if hits:
-                return sorted(hits, key=lambda t: t.deadline or datetime.max.astimezone())[0]
-        return sorted(cands, key=lambda t: t.deadline or datetime.max.astimezone())[0]
+                return sorted(hits, key=lambda t: t.deadline or datetime.max)[0]
+        return sorted(cands, key=lambda t: t.deadline or datetime.max)[0]
 
     # Search among all tasks (including subtasks) if explicitly hinted, otherwise just top-level
     cands_pool = tasks if target_hint else [t for t in tasks if t.parent_id is None]
@@ -277,10 +278,10 @@ def _resolve_task_by_name(
         return None
     name = (name or "").strip().lower()
     if not name:
-        return sorted(cands, key=lambda t: t.deadline or datetime.max.astimezone())[0]
+        return sorted(cands, key=lambda t: t.deadline or datetime.max)[0]
     exact = [t for t in cands if name == t.title.lower() or name in t.title.lower()]
     if exact:
-        return sorted(exact, key=lambda t: t.deadline or datetime.max.astimezone())[0]
+        return sorted(exact, key=lambda t: t.deadline or datetime.max)[0]
     titles = {t.title.lower(): t for t in cands}
     close = difflib.get_close_matches(name, list(titles), n=1, cutoff=0.3)
     return titles[close[0]] if close else None
@@ -308,7 +309,6 @@ def router_node(state: AthenaState, *, router_llm: Any) -> dict[str, Any]:
     return {
         "route": "chat_node",
         "active_tool": _TOOL_FOR_ROUTE["chat_node"],
-        "cognitive_load_status": None,
         "command": None,
     }
 
@@ -468,82 +468,69 @@ async def task_tool_node(
     now = datetime.now()
     tasks = await sqlite_manager.list_tasks()
 
-    # --- /not : attach a note to the resolved task ------------------------ #
-    if hints.get("operation") == "note":
-        hint, _, note_text = working_text.partition(":")
-        if not note_text.strip():
-            hint, note_text = "", working_text
-        target = _resolve_target_task(tasks, hint.strip() or None, None, now)
-        if target is None:
-            return {"messages": [AIMessage(content="Not eklenecek bir görev bulamadım.")],
-                    "active_tool": "add_task"}
-        target.notes = [*target.notes, Note(text=note_text.strip())]
-        await sqlite_manager.update_task(target)
-        return {"messages": [AIMessage(content=f"'{target.title}' görevine not eklendi.")],
-                "active_tool": "add_task", "current_task": target}
-
-    # --- /complete, /sil, /ertele : act on an existing task by name ------- #
-    mgmt_op = hints.get("operation")
-    if mgmt_op in {"complete", "delete", "reschedule"}:
-        target_date, rest = _extract_date_token(working_text, now)
-        if mgmt_op == "reschedule":
-            # The date token is the NEW deadline; the rest is the task name.
-            target = _resolve_task_by_name(tasks, rest, None)
-            if target is None:
-                return {"messages": [AIMessage(content="Ertelenecek görevi bulamadım.")],
-                        "active_tool": "add_task"}
-            new_deadline = (
-                datetime.combine(target_date, target.deadline.time())
-                if target_date else _resolve_deadline(None, now)
-            )
-            target.deadline = new_deadline
-            await sqlite_manager.update_task(target)
-            return {"messages": [AIMessage(content=(
-                f"'{target.title}' → {target.deadline.strftime('%Y-%m-%d %H:%M')} olarak ertelendi."))],
-                "active_tool": "add_task", "current_task": target}
-
-        target = _resolve_task_by_name(tasks, rest, target_date)
-        if target is None:
-            return {"messages": [AIMessage(content="Eşleşen görev bulamadım.")],
-                    "active_tool": "add_task"}
-        if mgmt_op == "complete":
-            await sqlite_manager.mark_task_completed(target.id)
-            return {"messages": [AIMessage(content=f"'{target.title}' tamamlandı olarak işaretlendi.")],
-                    "active_tool": "add_task", "current_task": target}
-        await sqlite_manager.delete_task(target.id)
-        return {"messages": [AIMessage(content=f"'{target.title}' silindi.")],
-                "active_tool": "add_task"}
-
     # --- extract task ops ------------------------------------------------- #
-    default_deadline_time = (
-        f"{settings.default_deadline_hour:02d}:{settings.default_deadline_minute:02d}"
-    )
+    # Cap very long input so a huge /plan paste can't blow the model's context
+    # window (the source of the occasional "memory error" on long plans). The
+    # head goes to the extractor; the tail is preserved into the task's notes
+    # by the deterministic fallback so nothing the user typed is lost.
+    _MAX_EXTRACT_CHARS = 8000
+    capped_text = working_text[:_MAX_EXTRACT_CHARS]
+    overflow_text = working_text[_MAX_EXTRACT_CHARS:].strip()
     attach_text = _attachments_text(state)
-    extractor_input = working_text
+    extractor_input = capped_text
     if attach_text:
         extractor_input += f"\n\n[Attached material]\n{attach_text[:6000]}"
+
+    def _fallback_ops() -> list[TaskExtraction]:
+        """Guarantee a command never gives up.
+
+        When the extractor returns nothing (empty result or an exception),
+        synthesize a single task straight from the raw text: the first line
+        becomes the title and everything else is kept in notes. This is what
+        makes /gorev and /plan self-sufficient — any non-empty input yields a
+        task, with a null deadline (no date is invented).
+        """
+        snippet = capped_text.strip()
+        lines = snippet.splitlines()
+        first_line = lines[0].strip() if lines else ""
+        title = first_line[:120].strip() or "Yeni görev"
+        note_parts = [p for p in (
+            first_line[120:].strip(),
+            "\n".join(lines[1:]).strip(),
+            overflow_text,
+        ) if p]
+        return [TaskExtraction(
+            operation="create",
+            title=title,
+            notes="\n".join(note_parts),
+            category=hints.get("category"),
+        )]
+
     try:
         extraction: Optional[TaskExtractionList] = await task_extractor_llm.ainvoke(
             [
                 SystemMessage(content=TASK_EXTRACTION_SYSTEM_PROMPT.format(
                     now=now.isoformat(timespec="minutes"),
-                    default_deadline_time=default_deadline_time,
                     default_discipline=settings.default_discipline,
                     default_estimated_hours=settings.default_estimated_hours,
                 )),
                 HumanMessage(content=extractor_input),
             ]
         )
-    except Exception as exc:
-        logger.exception("task extraction failed")
-        return {"messages": [AIMessage(content=f"Couldn't parse that into a task: {exc}")],
-                "active_tool": "add_task"}
+        ops = extraction.tasks if extraction is not None else []
+    except Exception:
+        logger.exception("task extraction failed; using deterministic fallback")
+        ops = []
 
-    ops = extraction.tasks if extraction is not None else []
+    # A command must never end with "couldn't extract". For the create/plan
+    # family, fall back to a single task built from the raw text. (Management
+    # operations — note/complete/delete/reschedule — already returned above.)
     if not ops:
-        return {"messages": [AIMessage(content=(
-            "Net bir görev çıkaramadım. Örn: 'yarın 9'da 1 saat kalkülüs tekrarı ekle'."))],
-            "active_tool": "add_task"}
+        if not working_text.strip():
+            return {"messages": [AIMessage(content=(
+                "Boş bir görev gönderdin. Örn: '/görev yarın 9'da 1 saat kalkülüs tekrarı'."))],
+                "active_tool": "add_task"}
+        ops = _fallback_ops()
 
     forced_op = hints.get("operation")  # create | update | None
     forced_category = hints.get("category")
@@ -656,7 +643,7 @@ async def task_tool_node(
         msgs.append(
             ("1 görev güncellendi:" if len(updated) == 1 else f"{len(updated)} görev güncellendi:")
             + "\n" + "\n".join(
-                f"- '{t.title}', {t.deadline.strftime('%Y-%m-%d %H:%M')}, {t.estimated_hours:g}h"
+                f"- '{t.title}', {t.deadline.strftime('%Y-%m-%d %H:%M') if t.deadline else 'Tarihsiz'}, {t.estimated_hours:g}h"
                 for t in updated
             )
         )

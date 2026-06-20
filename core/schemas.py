@@ -20,7 +20,7 @@ from enum import Enum
 from typing import Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def _new_id() -> str:
@@ -47,7 +47,7 @@ class TaskCategory(str, Enum):
 
 
 class WorkoutStatus(str, Enum):
-    """Lifecycle of a workout. Only ``completed`` contributes to cognitive load."""
+    """Lifecycle of a workout: a ``planned`` session vs a ``completed`` actual."""
 
     PLANNED = "planned"
     COMPLETED = "completed"
@@ -208,6 +208,21 @@ class PhysicalLoad(_StrictModel):
     note: Optional[str] = Field(
         default=None, description="Free-form rich-text (HTML) note for the session."
     )
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def _empty_note_to_none(cls, value: Optional[str]) -> Optional[str]:
+        """Normalize blank notes to NULL so '' and None never diverge in storage.
+
+        The rich-text editor can emit empty markup (``""`` or ``"<p></p>"``);
+        treating those as "no note" keeps reads consistent with writes.
+        """
+        if value is None:
+            return None
+        stripped = value.strip()
+        if stripped in ("", "<p></p>", "<p><br></p>", "<br>"):
+            return None
+        return value
 
 
 class PdfJobStatus(str, Enum):

@@ -21,10 +21,11 @@ export interface Material {
 export interface Task {
   id: string;
   title: string;
-  deadline: string;
+  // deadline & estimated_hours are nullable on the backend (optional fields).
+  deadline: string | null;
   discipline: string;
   status: string;
-  estimated_hours: number;
+  estimated_hours: number | null;
   category: "academic" | "daily";
   subtype: "project" | "assignment" | "study_session" | null;
   parent_id: string | null;
@@ -148,7 +149,7 @@ export const getTasks = () => jget<{ tasks: Task[] }>("/tasks").then((d) => d.ta
 
 export const createTask = (t: {
   title: string;
-  deadline: string;
+  deadline?: string | null;
   discipline?: string;
   estimated_hours?: number;
   category?: "academic" | "daily";
