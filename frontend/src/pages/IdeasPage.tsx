@@ -9,6 +9,7 @@ import {
 } from "../api";
 import { Card, Button } from "../ui";
 import IdeaEditorModal from "../components/IdeaEditorModal";
+import Modal from "../components/Modal";
 import { Paperclip, Plus, CalendarDays } from "lucide-react";
 
 function preview(html: string): string {
@@ -33,6 +34,7 @@ function fmtDay(iso: string): string {
 export default function IdeasPage() {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [dailyNotes, setDailyNotes] = useState<DailyNote[]>([]);
+  const [openNote, setOpenNote] = useState<DailyNote | null>(null);
   const [editing, setEditing] = useState<Idea | null>(null);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
@@ -94,17 +96,19 @@ export default function IdeasPage() {
           </p>
         )}
         {dailyNotes.map((note) => (
-          <div
+          <button
             key={note.id}
-            className="rounded-xl border border-line bg-elevated/60 p-3 transition-colors hover:border-line-strong"
+            type="button"
+            onClick={() => setOpenNote(note)}
+            className="w-full rounded-xl border border-line bg-elevated/60 p-3 text-left transition-colors hover:border-line-strong"
           >
             <div className="flex items-center gap-1.5 text-xs font-medium text-accent-400">
               <CalendarDays size={12} /> {fmtDay(note.date)}
             </div>
-            <p className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-sm text-zinc-300">
+            <p className="mt-1.5 line-clamp-2 whitespace-pre-wrap text-sm text-zinc-300">
               {preview(note.content)}
             </p>
-          </div>
+          </button>
         ))}
       </Card>
 
@@ -171,6 +175,25 @@ export default function IdeasPage() {
           }}
         />
       )}
+
+      <Modal
+        open={openNote !== null}
+        onClose={() => setOpenNote(null)}
+        title={openNote ? fmtDay(openNote.date) : ""}
+        widthClass="max-w-2xl"
+      >
+        {openNote && (
+          <div
+            className="prose prose-invert max-w-none overflow-y-auto px-1 text-zinc-200"
+            // Daily-note content is rich-text HTML written in the homepage editor.
+            dangerouslySetInnerHTML={{
+              __html: preview(openNote.content)
+                ? openNote.content
+                : "<p class='text-zinc-500'>Bu gün için not boş.</p>",
+            }}
+          />
+        )}
+      </Modal>
     </div>
   );
 }
