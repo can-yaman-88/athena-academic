@@ -371,7 +371,7 @@ async def _resolve_message_mentions(message: str, db: SQLiteManager) -> str:
 
         parts = [
             f"Görev: {target.title}",
-            f"Son tarih: {target.deadline.isoformat()}",
+            f"Son tarih: {target.deadline.isoformat() if target.deadline else 'tarihsiz'}",
             f"Alan: {target.discipline}",
             f"Tahmini süre: {target.estimated_hours}h",
             f"Kategori: {target.category.value}",
@@ -386,7 +386,10 @@ async def _resolve_message_mentions(message: str, db: SQLiteManager) -> str:
         if subtasks:
             parts.append(
                 "Alt görevler:\n"
-                + "\n".join(f"- {s.title} ({s.deadline.isoformat()})" for s in subtasks)
+                + "\n".join(
+                    f"- {s.title} ({s.deadline.isoformat() if s.deadline else 'tarihsiz'})"
+                    for s in subtasks
+                )
             )
         return "\n".join(parts)
 
@@ -470,7 +473,7 @@ def _task_context_block(target: Task, all_tasks: list[Task]) -> str:
 
     parts = [
         f"Görev: {target.title}",
-        f"Son tarih: {target.deadline.isoformat()}",
+        f"Son tarih: {target.deadline.isoformat() if target.deadline else 'tarihsiz'}",
         f"Alan: {target.discipline}",
         f"Tahmini süre: {target.estimated_hours}h",
         f"Kategori: {target.category.value}",

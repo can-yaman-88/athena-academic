@@ -273,7 +273,7 @@ def _resolve_task_by_name(
     if not include_completed:
         cands = [t for t in cands if t.status != TaskStatus.COMPLETED]
     if target_date is not None:
-        cands = [t for t in cands if t.deadline.date() == target_date]
+        cands = [t for t in cands if t.deadline and t.deadline.date() == target_date]
     if not cands:
         return None
     name = (name or "").strip().lower()
@@ -397,7 +397,7 @@ async def _generate_subtasks(
     payload = (
         f"Parent task: {parent.title}\nDiscipline: {parent.discipline}\n"
         f"Subtype: {parent.subtype.value if parent.subtype else 'n/a'}\n"
-        f"Deadline: {parent.deadline.isoformat()}\n\n"
+        f"Deadline: {parent.deadline.isoformat() if parent.deadline else 'none (parent has no deadline → leave subtask deadlines null)'}\n\n"
         f"Material/spec (may be empty):\n{context_text or '(none)'}"
     )
     limit_text = (
