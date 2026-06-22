@@ -1,0 +1,14 @@
+use_default_settings: true
+server:
+  secret_key: "J8pXmrl3ca3TwpjUGezW6vgrcvr2w"
+  image_proxy: true
+  limiter: false
+search:
+  formats:
+    - html
+    - json
+botdetection:
+  ip_lists:
+    pass_ip:
+      - 172.0.0.0/8
+      - 127.0.0.0/8
