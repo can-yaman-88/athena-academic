@@ -14,9 +14,9 @@ from core.note_analyzer import NOTE_ANALYSIS_SYSTEM_PROMPT
 from core.prompt_templates import (
     CHAT_SYSTEM_PROMPT,
     IDEA_EXTRACTION_SYSTEM_PROMPT,
+    RESEARCH_PLAN_PROMPT,
     SESSION_EXTRACTION_SYSTEM_PROMPT,
     TASK_EXTRACTION_SYSTEM_PROMPT,
-    WORKOUT_PLAN_SYSTEM_PROMPT,
 )
 from core.spaced_repetition import ACADEMIC_MEMORY_EVALUATOR_PROMPT
 from core.subtasks import SUBTASK_SYSTEM_PROMPT
@@ -41,11 +41,11 @@ def test_subtask_prompt_formats():
 
 
 def test_other_prompts_format():
-    assert WORKOUT_PLAN_SYSTEM_PROMPT.format(now=_NOW)
+    assert RESEARCH_PLAN_PROMPT.format(now=_NOW, question="quantum computing")
     assert SESSION_EXTRACTION_SYSTEM_PROMPT.format(now=_NOW)
     assert IDEA_EXTRACTION_SYSTEM_PROMPT.format(n_val=3)
-    # These have no placeholders but must contain no stray format fields.
-    assert CHAT_SYSTEM_PROMPT.format()
+    # The chat prompt has context/memory slots that the chat node fills.
+    assert CHAT_SYSTEM_PROMPT.format(context="ctx", memory="mem")
     assert NOTE_ANALYSIS_SYSTEM_PROMPT.format()
     assert JOURNAL_ANALYSIS_SYSTEM_PROMPT.format()
     assert ACADEMIC_MEMORY_EVALUATOR_PROMPT.format()

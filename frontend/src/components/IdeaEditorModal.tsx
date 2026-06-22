@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import NotionEditor from "./NotionEditor";
 import { Button } from "../ui";
 import {
@@ -77,10 +78,10 @@ export default function IdeaEditorModal({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm">
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div
-        className="flex h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-card-hover"
+        className="flex h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-card-hover"
         style={{ animation: "modal-pop 180ms ease-out" }}
       >
         {/* Header */}
@@ -206,6 +207,7 @@ export default function IdeaEditorModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

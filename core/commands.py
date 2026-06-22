@@ -3,8 +3,8 @@
 A message that begins with a known ``/word`` is handled deterministically: the
 router bypasses the LLM classifier, sets the route directly, and records the
 command name in the graph state so the target node can honor the command's hints
-(e.g. force an academic task, force an update, treat the message as a workout
-plan). The single source of truth for the command set is :data:`COMMANDS`, which
+(e.g. force an academic task, force an update, run deep research on the message).
+The single source of truth for the command set is :data:`COMMANDS`, which
 also backs the ``/yardim`` help text and the generated ``codes.md``.
 """
 
@@ -26,20 +26,10 @@ class Command:
 
 # name -> Command. ``hints`` is read by the target node.
 COMMANDS: dict[str, Command] = {
-    "gorev": Command(
-        "gorev", "task_tool_node",
-        "Günlük görev ekler. Mesajdaki ekstra detaylar görevin notlarına kaydedilir.",
-        {"operation": "create", "category": "daily", "generate_subtasks": False},
-    ),
     "agorev": Command(
         "agorev", "task_tool_node",
         "Akademik görev ekler. Alt görev parçalaması yapılmaz.",
         {"operation": "create", "category": "academic", "generate_subtasks": False},
-    ),
-    "altgorev": Command(
-        "altgorev", "task_tool_node",
-        "Günlük görev ekler ve verilen sayı kadar alt göreve böler.",
-        {"operation": "create", "category": "daily", "generate_subtasks": True},
     ),
     "altakademik": Command(
         "altakademik", "task_tool_node",
@@ -51,10 +41,10 @@ COMMANDS: dict[str, Command] = {
         "Girdi içinden parantez içindeki değer kadar fikir üretir.",
         {"operation": "extract_ideas"},
     ),
-    "antrenman": Command(
-        "antrenman", "workout_tool_node",
-        "Tek bir planlı antrenman ekler. Yorumlar notlar kısmına eklenir.",
-        {"mode": "single", "status": "planned"},
+    "arastir": Command(
+        "arastir", "research_node",
+        "Verilen konu hakkında çok turlu derin web araştırması yapar; raporu sohbette gösterir ve Fikir Defteri'ne kaydeder.",
+        {"operation": "deep_research"},
     ),
     "seans": Command(
         "seans", "session_node",
@@ -81,11 +71,10 @@ COMMANDS: dict[str, Command] = {
 # A few English aliases for convenience.
 _ALIASES = {
     "agörev": "agorev",
-    "altgörev": "altgorev",
     "altakademik": "altakademik",
-    "görev": "gorev",
     "aralık": "aralik",
     "yardım": "yardim",
+    "araştır": "arastir",
 }
 
 

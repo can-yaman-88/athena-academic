@@ -16,6 +16,12 @@ import {
 export interface Line {
   role: "user" | "agent" | "system";
   text: string;
+  // Marks special system lines so the UI can render distinct blocks:
+  //   "tool"     → a tool-call card (e.g. add_task / deep_research)
+  //   "research" → a live Deep Research progress panel (transient)
+  kind?: "tool" | "research";
+  // Epoch ms when the message was sent; used by Günüm to group/deep-link a day.
+  ts?: number;
 }
 
 export interface ChatSession {
@@ -175,11 +181,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const sessionId = activeSessionId;
       const currentSession = sessions.find((s) => s.id === sessionId);
       const baseLines = opts.historyOverride || currentSession?.lines || [];
+      // Timestamp the turn so the Günüm page can group a day's conversation and
+      // deep-link to it. (Older, untimestamped messages stay unlinkable.)
+      const turnTs = Date.now();
       const newLines: Line[] = [
         ...baseLines,
         {
           role: "user",
           text: message + (ids.length ? ` 📎${ids.length}` : ""),
+          ts: turnTs,
         },
       ];
       updateLinesOf(sessionId, newLines);
@@ -187,6 +197,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setBusy(true);
       streamActiveRef.current = true;
       let currentAgentMessage = "";
+      // Tool-call cards persist with the turn; the research panel is transient.
+      const toolNotes: Line[] = [];
+      let researchStatus: Line | null = null;
+
+      const renderStreaming = () => {
+        const out: Line[] = [...newLines, ...toolNotes];
+        if (currentAgentMessage) out.push({ role: "agent", text: currentAgentMessage, ts: turnTs });
+        if (researchStatus) out.push(researchStatus);
+        updateLinesOf(sessionId, out);
+      };
 
       const abortController = new AbortController();
       abortRef.current = abortController;
@@ -214,11 +234,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         for (;;) {
           const { value, done } = await reader.read();
           if (done) {
+            // Persist tool-call cards with the turn; drop the transient research
+            // progress panel. Keep the final agent message last.
+            const finalLines: Line[] = [...newLines, ...toolNotes];
             if (currentAgentMessage) {
-              updateLinesOf(sessionId, [
-                ...newLines,
-                { role: "agent", text: currentAgentMessage },
-              ]);
+              finalLines.push({ role: "agent", text: currentAgentMessage, ts: turnTs });
+            }
+            if (toolNotes.length || currentAgentMessage) {
+              updateLinesOf(sessionId, finalLines);
             }
             break;
           }
@@ -232,39 +255,47 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             if (!line.startsWith("data:")) continue;
             try {
               const evt = JSON.parse(line.slice(5).trim());
-              if (evt.type === "message") {
-                currentAgentMessage += String(evt.content);
+              // Token-level stream from chat_node (1C) + whole messages from
+              // tool nodes both append to the current agent bubble.
+              if (evt.type === "delta" || evt.type === "message") {
+                currentAgentMessage += String(evt.content ?? "");
                 shouldUpdate = true;
-              } else if (evt.type === "tool") {
-                updateLinesOf(sessionId, [
-                  ...newLines,
-                  { role: "agent", text: currentAgentMessage },
-                  { role: "system", text: `→ tool: ${String(evt.active_tool)}` },
-                ]);
+              } else if (evt.type === "tool_start" || evt.type === "tool") {
+                const tool = String(evt.tool ?? evt.active_tool ?? "");
+                // deep_research gets a live panel instead of a static card.
+                if (tool && tool !== "deep_research" &&
+                    !toolNotes.some((t) => t.text === tool)) {
+                  toolNotes.push({ role: "system", kind: "tool", text: tool });
+                }
+                shouldUpdate = true;
+              } else if (evt.type === "research_progress") {
+                const phase = String(evt.phase ?? "");
+                const round = evt.round ? ` · tur ${evt.round}` : "";
+                const sources = evt.total_sources
+                  ? ` · ${evt.total_sources} kaynak`
+                  : "";
+                researchStatus = {
+                  role: "system",
+                  kind: "research",
+                  text: `${phase}${round}${sources}`,
+                };
+                shouldUpdate = true;
               } else if (evt.type === "error") {
-                updateLinesOf(sessionId, [
-                  ...newLines,
-                  { role: "agent", text: currentAgentMessage },
-                  { role: "system", text: `error: ${String(evt.error)}` },
-                ]);
+                toolNotes.push({ role: "system", text: `error: ${String(evt.error)}` });
+                shouldUpdate = true;
               }
             } catch {
               /* ignore malformed frame */
             }
           }
-          if (shouldUpdate) {
-            updateLinesOf(sessionId, [
-              ...newLines,
-              { role: "agent", text: currentAgentMessage },
-            ]);
-          }
+          if (shouldUpdate) renderStreaming();
         }
       } catch (e) {
         if ((e as Error).name === "AbortError") {
           if (currentAgentMessage) {
             updateLinesOf(sessionId, [
               ...newLines,
-              { role: "agent", text: currentAgentMessage },
+              { role: "agent", text: currentAgentMessage, ts: turnTs },
             ]);
           }
         } else {

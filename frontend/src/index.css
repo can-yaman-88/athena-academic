@@ -1,48 +1,161 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Fira+Code:wght@300;400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /*
- * Athena design tokens — "Aurora Indigo" identity.
- * A deep indigo-tinted dark base with a violet→iris primary and a teal data
- * accent. Generated from the ui-ux-pro-max OLED-dark system ("night indigo +
- * dream violet"), then tuned for WCAG AA contrast, layered surfaces, soft
- * elevation and a crisp violet focus ring.
+ * Athena design tokens.
+ *
+ * Themeable colors are stored as **space-separated RGB channels** (e.g.
+ * `--primary: 139 124 246`) so Tailwind can apply opacity modifiers via
+ * `rgb(var(--x) / <alpha-value>)` AND so swapping a theme class on <html>
+ * recolors the whole app. Hairline `--line*` tokens keep a baked-in alpha
+ * (they're used mostly without an opacity modifier), so they hold full color
+ * strings instead of channels.
+ *
+ * Default `:root` is the "Aurora Indigo" identity; `.theme-cyberpunk` and
+ * `.theme-terminal` override the channels. `ThemeContext` toggles the class.
  */
 :root {
-  --bg: #08080f;              /* app base, indigo-black */
-  --surface: #0e0e18;         /* page panels */
-  --surface-2: #14141f;       /* nested rows / inputs */
-  --elevated: #17172499;      /* cards (slightly translucent for depth) */
-  --elevated-solid: #171724;
-  --foreground: #f3f3f8;      /* near-white, cool */
-  --muted: #a3a3b8;           /* secondary text (AA on dark) */
-  --faint: #6f6f87;           /* tertiary text */
+  /* Channel tokens (consumed by tailwind.config.js + rgb(var(--x)/a)). */
+  --bg: 8 8 15;                 /* app base, indigo-black */
+  --surface: 14 14 24;          /* page panels */
+  --surface-2: 20 20 31;        /* nested rows / inputs */
+  --elevated-solid: 23 23 36;   /* cards */
 
-  /* Hairline borders read more premium as translucent white on dark. */
+  --primary: 139 124 246;       /* iris / violet-400 (base) */
+  --primary-50: 242 240 254;
+  --primary-100: 230 226 253;
+  --primary-200: 207 199 251;
+  --primary-300: 179 166 249;
+  --primary-400: 139 124 246;
+  --primary-500: 109 93 224;
+  --primary-600: 88 71 196;
+  --primary-700: 71 58 158;
+  --primary-800: 58 48 128;
+  --primary-900: 46 39 99;
+
+  --accent: 45 212 191;         /* teal-400 */
+  --accent-300: 94 234 212;
+  --accent-400: 45 212 191;
+  --accent-500: 20 184 166;
+
+  /* Full-color tokens (used directly in component CSS, not via tailwind). */
+  --foreground: #f3f3f8;        /* near-white, cool */
+  --muted: #a3a3b8;             /* secondary text */
+  --faint: #6f6f87;             /* tertiary text */
+  --primary-strong: #a594ff;    /* lighter for hover/active */
+  --primary-deep: #6d5de0;      /* pressed */
+  --success: #34d399;
+  --warning: #fbbf24;
+  --destructive: #fb7185;
+  --ring: #8b7cf6;
+
+  /* Hairline borders read premium as translucent overlays on dark. */
   --line: rgba(255, 255, 255, 0.07);
   --line-strong: rgba(255, 255, 255, 0.13);
 
-  --primary: #8b7cf6;         /* iris / violet-400 */
-  --primary-strong: #a594ff;  /* lighter for hover/active */
-  --primary-deep: #6d5de0;    /* pressed */
-  --accent: #2dd4bf;          /* teal-400 — data / positive secondary */
-  --success: #34d399;         /* emerald-400 */
-  --warning: #fbbf24;         /* amber-400 */
-  --destructive: #fb7185;     /* rose-400 */
-  --ring: #8b7cf6;
+  /* Color the canvas backgrounds sample for their particles. */
+  --bg-effect-color: #8b7cf6;
 
-  --radius: 0.875rem;         /* 14px — softer, fresher than before */
+  --radius: 0.875rem;           /* 14px */
 
-  /* Soft, layered elevation + a faint violet glow for primary surfaces. */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
   --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.45), 0 6px 16px rgba(0, 0, 0, 0.38);
   --shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px rgba(0, 0, 0, 0.5);
-  --glow: 0 0 0 1px rgba(139, 124, 246, 0.4), 0 8px 28px rgba(139, 124, 246, 0.22);
+  --glow: 0 0 0 1px rgb(var(--primary) / 0.4), 0 8px 28px rgb(var(--primary) / 0.22);
 
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* Chat surface font — Fira Code, matching the Odysseus chatbox. */
+  --font-chat: "Fira Code", ui-monospace, "JetBrains Mono", monospace;
+}
+
+/*
+ * Cyberpunk — deep purple-black base, electric-cyan primary, magenta accent,
+ * neon-violet hairlines. Palette: bg #0a0a0f, fg #0ff0fc, panel #12101a,
+ * border #9b30ff, red #e040fb.
+ */
+.theme-cyberpunk {
+  --bg: 10 10 15;
+  --surface: 18 16 26;
+  --surface-2: 26 23 38;
+  --elevated-solid: 21 19 31;
+
+  --primary: 15 240 252;        /* electric cyan (fg) */
+  --primary-50: 236 255 255;
+  --primary-100: 214 252 255;
+  --primary-200: 174 249 255;
+  --primary-300: 111 247 255;
+  --primary-400: 15 240 252;
+  --primary-500: 11 188 207;
+  --primary-600: 10 142 160;
+  --primary-700: 8 107 120;
+  --primary-800: 6 79 89;
+  --primary-900: 4 59 66;
+
+  --accent: 224 64 251;         /* magenta */
+  --accent-300: 239 139 255;
+  --accent-400: 224 64 251;
+  --accent-500: 192 38 211;
+
+  --foreground: #d7feff;
+  --muted: #7fb8bf;
+  --faint: #4f7a80;
+  --primary-strong: #6ff7ff;
+  --primary-deep: #0bbccf;
+  --success: #00e5b0;
+  --warning: #ffb020;
+  --destructive: #e040fb;
+  --ring: #0ff0fc;
+
+  --line: rgba(155, 48, 255, 0.32);
+  --line-strong: rgba(155, 48, 255, 0.55);
+
+  --bg-effect-color: #0ff0fc;
+}
+
+/*
+ * Terminal — pure-black CRT base, matrix-green everything. Palette:
+ * bg #000000, fg #00ff41, panel #0a0a0a, border #003b00, red #00ff41.
+ */
+.theme-terminal {
+  --bg: 0 0 0;
+  --surface: 10 10 10;
+  --surface-2: 15 20 15;
+  --elevated-solid: 12 12 12;
+
+  --primary: 0 255 65;          /* matrix green */
+  --primary-50: 235 255 239;
+  --primary-100: 204 255 216;
+  --primary-200: 154 255 181;
+  --primary-300: 91 255 134;
+  --primary-400: 0 255 65;
+  --primary-500: 0 204 52;
+  --primary-600: 0 153 42;
+  --primary-700: 0 107 29;
+  --primary-800: 0 79 22;
+  --primary-900: 0 59 0;
+
+  --accent: 0 255 65;
+  --accent-300: 91 255 134;
+  --accent-400: 0 255 65;
+  --accent-500: 0 204 52;
+
+  --foreground: #b8ffc6;
+  --muted: #5f9f6f;
+  --faint: #3f6f4f;
+  --primary-strong: #5bff86;
+  --primary-deep: #00cc34;
+  --success: #00ff41;
+  --warning: #ccff00;
+  --destructive: #00ff41;
+  --ring: #00ff41;
+
+  --line: rgba(0, 255, 65, 0.14);
+  --line-strong: rgba(0, 255, 65, 0.30);
+
+  --bg-effect-color: #00ff41;
 }
 
 html,
@@ -56,14 +169,13 @@ body {
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.5;
-  /* Inter's stylistic sets give the precise, technical look. */
   font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
   letter-spacing: -0.011em;
-  /* Indigo-black base with a violet aurora top-left + teal fill bottom-right. */
+  /* Base tint + soft aurora glow drawn from the active theme's primary/accent. */
   background:
-    radial-gradient(1000px 560px at 0% -10%, rgba(139, 124, 246, 0.10), transparent 60%),
-    radial-gradient(820px 620px at 100% 112%, rgba(45, 212, 191, 0.05), transparent 55%),
-    var(--bg);
+    radial-gradient(1000px 560px at 0% -10%, rgb(var(--primary) / 0.10), transparent 60%),
+    radial-gradient(820px 620px at 100% 112%, rgb(var(--accent) / 0.05), transparent 55%),
+    rgb(var(--bg));
   background-attachment: fixed;
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
@@ -75,7 +187,6 @@ h1, h2, h3 {
   letter-spacing: -0.02em;
 }
 
-/* Micro-interactions: smooth transitions + clickable affordance + visible focus. */
 button,
 a,
 [role="button"],
@@ -99,7 +210,7 @@ textarea {
 
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ring);
+  box-shadow: 0 0 0 2px rgb(var(--bg)), 0 0 0 4px var(--ring);
   border-radius: 8px;
 }
 
@@ -109,18 +220,18 @@ textarea {
  */
 @layer components {
   .surface {
-    background-color: var(--surface);
+    background-color: rgb(var(--surface));
     border: 1px solid var(--line);
   }
   .panel {
-    background-color: color-mix(in oklab, var(--surface) 92%, transparent);
+    background-color: rgb(var(--surface) / 0.92);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     box-shadow: var(--shadow-md);
   }
   .card-elevated {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.022), transparent 42%),
-      var(--elevated-solid);
+    background: linear-gradient(180deg, rgb(var(--primary) / 0.022), transparent 42%),
+      rgb(var(--elevated-solid));
     border: 1px solid var(--line);
     border-radius: var(--radius);
     box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -129,14 +240,14 @@ textarea {
     border-color: var(--line-strong);
     box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   }
-  /* Subtle violet-tinted highlight surface for primary/active states. */
+  /* Subtle primary-tinted highlight surface for active states. */
   .tint-primary {
-    background: rgba(139, 124, 246, 0.12);
-    border: 1px solid rgba(139, 124, 246, 0.3);
+    background: rgb(var(--primary) / 0.12);
+    border: 1px solid rgb(var(--primary) / 0.3);
     color: var(--primary-strong);
   }
   .field {
-    background-color: var(--surface-2);
+    background-color: rgb(var(--surface-2));
     border: 1px solid var(--line);
     color: var(--foreground);
     border-radius: 0.5rem;
@@ -146,8 +257,8 @@ textarea {
   }
   .field:focus,
   .field:focus-visible {
-    border-color: rgba(139, 124, 246, 0.6);
-    box-shadow: 0 0 0 3px rgba(139, 124, 246, 0.18);
+    border-color: rgb(var(--primary) / 0.6);
+    box-shadow: 0 0 0 3px rgb(var(--primary) / 0.18);
     outline: none;
   }
   .hairline {

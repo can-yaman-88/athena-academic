@@ -38,7 +38,7 @@ async def test_empty_extraction_still_creates_task(db):
     """Empty extractor result → deterministic single task, not a giving-up message."""
     llm = _FakeLLM(result=TaskExtractionList(tasks=[]))
     out = await task_tool_node(
-        _state("/gorev acayip uzun ve dağınık bir görev metni"),
+        _state("/agorev acayip uzun ve dağınık bir görev metni"),
         task_extractor_llm=llm, sqlite_manager=db, subtask_llm=None,
     )
     tasks = await db.list_tasks()
@@ -63,7 +63,7 @@ async def test_blank_input_does_not_create(db):
     """A truly empty command body is the only case that creates nothing."""
     llm = _FakeLLM(result=TaskExtractionList(tasks=[]))
     await task_tool_node(
-        _state("/gorev    "),
+        _state("/agorev    "),
         task_extractor_llm=llm, sqlite_manager=db, subtask_llm=None,
     )
     tasks = await db.list_tasks()
@@ -73,7 +73,7 @@ async def test_blank_input_does_not_create(db):
 async def test_fallback_preserves_detail_in_notes(db):
     """The first line becomes the title; the rest is kept in notes (nothing lost)."""
     llm = _FakeLLM(result=TaskExtractionList(tasks=[]))
-    text = "/gorev Başlık satırı\nikinci satır detay\nüçüncü satır"
+    text = "/agorev Başlık satırı\nikinci satır detay\nüçüncü satır"
     await task_tool_node(
         _state(text), task_extractor_llm=llm, sqlite_manager=db, subtask_llm=None,
     )
@@ -88,7 +88,7 @@ async def test_omitted_date_yields_null_deadline(db):
                         deadline=None, category="daily")
     llm = _FakeLLM(result=TaskExtractionList(tasks=[op]))
     await task_tool_node(
-        _state("/gorev bir şeyler yap"),
+        _state("/agorev bir şeyler yap"),
         task_extractor_llm=llm, sqlite_manager=db, subtask_llm=None,
     )
     tasks = await db.list_tasks()

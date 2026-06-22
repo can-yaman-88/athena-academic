@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * A Notion-style centered modal: blurred backdrop + a card that scales/fades in
@@ -28,7 +29,7 @@ export default function Modal({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
       onClick={onClose}
@@ -49,6 +50,7 @@ export default function Modal({
         </div>
         <div className="min-h-0 flex-1 overflow-hidden p-4">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

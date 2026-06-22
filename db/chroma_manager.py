@@ -178,14 +178,20 @@ class ChromaManager:
     # Public API
     # ------------------------------------------------------------------ #
     def add_document(
-        self, text: str, metadata: Optional[dict[str, Any]] = None
+        self,
+        text: str,
+        metadata: Optional[dict[str, Any]] = None,
+        *,
+        doc_id: Optional[str] = None,
     ) -> list[str]:
         """Chunk ``text``, embed it, and store the chunks under a shared doc id.
 
         Returns the list of per-chunk ids that were written. Each chunk's stored
         metadata is a copy of ``metadata`` augmented with ``doc_id``,
         ``chunk_index`` and ``chunk_count`` so chunks of one document can be
-        grouped, filtered, and reassembled later.
+        grouped, filtered, and reassembled later. A caller may supply ``doc_id``
+        (e.g. a Brain fact id) so the document can later be deleted/looked up by
+        that stable id; otherwise a random UUID is assigned.
         """
         collection = self._require_collection()
 
@@ -196,7 +202,7 @@ class ChromaManager:
         if not chunks:
             raise ValueError("Document produced no chunks after splitting.")
 
-        doc_id = str(uuid4())
+        doc_id = doc_id or str(uuid4())
         base_metadata = dict(metadata) if metadata else {}
         chunk_count = len(chunks)
 

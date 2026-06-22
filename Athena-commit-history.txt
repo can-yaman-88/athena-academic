@@ -1,3 +1,296 @@
+17.23
+Anladığım kadarıyla BlockNote kullnırsam yapay zeka ile iletişimimde bir takım kopukluklar ve ek aracı sistemler gerçekleşiyor. Bunu istemiyorum. Zaten amacımız Notion'un o karmaşık özelliklerinden kurtulmaktı. Ama burada bir sorun daha karşımıza çıkıyor: Dosyalama sistemi... Ben Notion gibi sayfa içinde sayfa oluşturma altyapısını kurmak istiyorum. Eğer bunu mevcut metin editörünü genişleterek yapabileceksek kesinlikle blocknote yerine kendi sistemimizin geliştirilmesinden yanayım.
+O zaman şöyle bir yol izliyoruz:
+/ Komutlarını artırmanı istiyorum. En az 10 tane yeni komut ekle. Özellikle todo, toggle ve toggle heading yapısı, görsel, dosya, link ve link embedding gibi özellikleri kesin istiyorum.
+Günlük görevleri tamamen kaldır. Günlük görev filtrelerini de tamamen kaldır. Direkt olarak günlük sayfasını tamamen kaldır.
+Bunun yerine bir Notlar sayfası oluştur. Bu sayfada notionvari bir yapı izleyeceğiz. Burada tüm notlar isimleriyle sıralanacak, aynı notiondaki list view gibi. Yeni not ekleme butonu olacak Bu butonla beraber tam sayfa bir not açılacak ve bu sayfadaki değişiklikler otomatik kaydedilecek. Bu sayfanın içine de sayfa eklenebilecek ve hatta o sayfanın içine de. Bunun sonsuz bir döngü değil de sayfanın içine sayfa, o sayfanın içine de sayfa şeklinde page->page->page olacak şekilde sınırlandırmak istiyorum.
+Ek olarak / komutları her sayfada kullanılabilecek ve ++ yerine tekrardan / işareti ile çağrılacak şekilde ayarlamanı istiyorum.
+Yani aslında kurmanı istediğim şey notion arayüzünü kendi mimarimize entegre etmen.
+Daha sonrasında da bir Günüm sayfası oluştur. Bu sayfada en üstte tarih seçilebilsin ve bu tarih seçildiğinde o tarihte yazılmış tüm notları, fikirleri; o tarihe atanmış akademik görevleri görülebilsin. Hepsi alt alta olsun ve en üstte görevler olsun. Sonrasında notlar ve sonrasında fikirler. Ayrıca en altta o gün yapay zeka ile yapılmış konuşmanın br linki olsun. Bu linke tıklanıldığında o konuşmanın o kısmına gidilsin.
+
+
+
+
+17.00
+Günlükleri silebilme.
+https://github.com/AppFlowy-IO/AppFlowy.git
+Bu repodaki blok tabanlı sistemin entegre edilmesi.
+Yapay zeka BlockNote kütüphanesinin daha iyi olacağını söylüyor. Bilemiyorum.
+Uygulamadan tamamen vazgeçildi.
+
+
+
+
+14.13
+Fikir defterindeki fikir yazma sayfasını center peek'de açtığım zaman sayfanın en üstü gözükmüyor (kaydet tuşu ve çarpı işareti).
+Alttaki loglar deep researc için aldığım hata logları.
+athena_api       | INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+athena_api       | INFO:athena.pdf_engine.usage:cost · agent · qwen/qwen3.7-max-20260520qwen/qwen3.7-max-20260520 · agent · in=77 out=1712 ≈$0.0065
+athena_api       | INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+athena_api       | INFO:athena.pdf_engine.usage:cost · agent · qwen/qwen3.7-max-20260520qwen/qwen3.7-max-20260520 · agent · in=108 out=1034 ≈$0.0040
+athena_api       | WARNING:athena.research.search:SearXNG search failed for 'deneme mesajı SMS API gateway test': All connection attempts failed
+athena_api       | WARNING:athena.research.search:SearXNG search failed for 'deneme mesajı dummy payload webhook': All connection attempts failed
+athena_api       | WARNING:athena.research.search:SearXNG search failed for 'deneme mesajı software localization test string': All connection attempts failed
+athena_api       | INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+athena_api       | INFO:athena.pdf_engine.usage:cost · agent · qwen/qwen3.7-max-20260520qwen/qwen3.7-max-20260520 · agent · in=108 out=1091 ≈$0.0042
+athena_api       | WARNING:athena.research.search:SearXNG search failed for 'network echo test message protocols': All connection attempts failed
+athena_api       | WARNING:athena.research.search:SearXNG search failed for 'Turkish dummy text generator': All connection attempts failed
+athena_api       | WARNING:athena.research.search:SearXNG search failed for 'webhook test payload JSON sample': All connection attempts failed
+athena_api       | INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+athena_api       | INFO:athena.pdf_engine.usage:cost · agent · qwen/qwen3.7-max-20260520qwen/qwen3.7-max-20260520 · agent · in=108 out=867 ≈$0.0034
+athena_api       | WARNING:athena.research.search:SearXNG search failed for 'SMS deneme mesajı gönderme testi': All connection attempts failed
+athena_api       | WARNING:athena.research.search:SearXNG search failed for 'WhatsApp deneme mesajı iletme durumu': All connection attempts failed
+athena_api       | WARNING:athena.research.search:SearXNG search failed for 'e-posta deneme mesajı sunucu ayarları': All connection attempts failed
+athena_api       | INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+athena_api       | INFO:athena.pdf_engine.usage:cost · agent · qwen/qwen3.7-max-20260520qwen/qwen3.7-max-20260520 · agent · in=108 out=1047 ≈$0.0041
+athena_api       | WARNING:athena.research.search:SearXNG search failed for 'SMS API test deneme mesajı entegrasyon': All connection attempts failed
+athena_api       | WARNING:athena.research.search:SearXNG search failed for 'deneme mesajı adı altında gelen spam SMS şikayet': All connection attempts failed
+athena_api       | WARNING:athena.research.search:SearXNG search failed for 'WhatsApp Business deneme mesajı şablon onay kuralları': All connection attempts failed
+
+Günüm notlarını Fikir Defterinden günlük sayfasına taşı.
+Chatbox'dai yazıların Odysseus'daki gibi kenarlardan biraz boşluk bırakılmış şekilde olmasını sağla.
+Yazı fontunuda onunla aynı yap.
+
+
+
+
+
+12.44
+│ Athena ← Odysseus: Port 5 Features                                            │
+│                                                                               │
+│ Context                                                                       │
+│                                                                               │
+│ Athena (folder ~/Jarvis) is an agentic academic assistant: FastAPI + LangGraph + OpenRouter backend, React/TS + Tailwind v3 frontend. We are porting 5 features out of the older Odysseus project (~/odysseus, Python + Vanilla JS) — but adapting the logic into Athena's React+LangGraph stack, not copy-pasting. Goal: a richer chatbox (streaming + tool-call blocks + attachments + syntax highlighting), two new selectable canvas themes, an iterative Deep Research engine, and a long-term-memory "Brain".               │
+│                                                                               │
+│ Decisions locked with the user                                                │
+│                                                                               │
+│ - Search backend for Deep Research: SearXNG (env SEARXNG_URL, default http://localhost:8080). Adapt Odysseus services/search/providers.py::searxng_search + content.py::fetch_webpage_content.                                            │
+│ - Chat rebuild: Refactor + extend — decompose existing ChatTerminal.tsx into components/chat/*, preserving sessions/@mentions/slash-commands/search/export, and ADD tool-call blocks, syntax highlighting, drag-drop, token-level streaming.                        │
+│ - Deep Research output: Both — render report in chat and auto-save as an Idea (/ideas) with sources.                                                        │
+│ - Brain extraction: Manual / on-demand only — no per-turn auto-extraction; a button in the Brain modal extracts from recent chat; manual add/edit/delete. Retrieval (injecting facts into the chat prompt) still happens automatically every turn.                                                                   │
+│                                                                               │
+│ App restructure (requested after initial plan)                                │
+│                                                                               │
+│ - Remove "Günüm" page (/ → HomePage.tsx) and replace / with a full-page chatbox (the rebuilt Odysseus-style chat from Phase 3).                       │
+│ - Split "Görevler" (/manage → ManagePage.tsx + TaskManager.tsx) into two pages: "Akademik" and "Günlük", filtered by the existing Task.category (academic | daily).                                                           │
+│ - The daily-note editor ("Günüm Notu") + the today/this-week/this-month task overview from HomePage move to the new "Günlük" page.                         │
+│ - Completely remove "Antrenman" (workouts) — frontend page AND all backend (endpoints, graph node, schemas, DB table, import tool, Runalyze sync).       │
+│                                                                               │
+│ Key facts discovered (ground truth)                                           │
+│                                                                               │
+│ - Chat SSE endpoint: app.py:585 /chat, streams via graph.astream(stream_mode="updates") → emits whole node messages, not token deltas. Event shapes: {type:"message",node,content}, {type:"tool",active_tool}, {type:"done"}, {type:"error"}. Frontend consumes them in frontend/src/ChatContext.tsx:169 (send).                              │
+│ - Graph build/wiring: core/graph.py:932 (build_athena_graph), conditional edges at :977, route map _TOOL_FOR_ROUTE:63, chat_node:316 (Chroma retrieval + system prompt injection point), router :300.                                │
+│ - Commands registry: core/commands.py COMMANDS dict (Turkish slash commands). RouteTarget literal in core/state.py.                                         │
+│ - ChromaManager (db/chroma_manager.py) takes a collection_name param → a Brain can reuse it with its own collection. add_document/query_documents/delete_document/count available.                 │
+│ - SQLite (db/sqlite_manager.py): has ideas table + upsert_idea; pattern of _write, WAL, async lock. Ideas API in app.py (GET/POST/PATCH/DELETE /ideas).  │
+│ - Config: config.py settings holds openrouter_*, available_models, model slugs, chroma paths.                              │- Frontend: React 18, own+remark-gfm (NO syntax   │highlighter yet), Taileme tokens are CSS vars in  │frontend/src/index.cssfig.js. No theme            │context/switcher. Layout/header: components/Layout.tsx. API client: frontend/src/api.ts (A                            │
+│ - Odysseus canvas effects live in static/js/theme.js: _initSynapse (cyberpunk) and _initPerlinFlow (terminal, with _bgSmoothNoise/_bgNoise2d     │
+│ helpers).                                         │
+│                                                   │
+│ ---                                               │
+│ Phase 0 — App restruct)                           │
+│                                                                  0A. Remove Antrenman /d)                          │
+│                                                                  Backend (delete workou / seans which is academic  │study sessions, not workouts):                                                │
+│ - app.py: remove /workouts, /workouts/{id} (PATCH/DELETE),       /workouts/{id}/completts/sync/runalyze; the       │Runalyze sync loop + i (app.py:116–133);          │_workout_context_blockan branches in              │_resolve_structured_meessage_mentions (:415,437); │ WorkoutRequest model; related imports.                             - core/graph.py: remov                            │_default_workout_extractor_llm (:149), its node/edge/route-map entr(:949,984,992,1006, _TutPlan/PhysicalLoad         │imports.                                                           - core/commands.py: re                            │
+│ - core/state.py: drop "workout_tool_node" from RouteTarget.        - core/prompt_templaterkoutPlanItem,              │WORKOUT_PLAN_SYSTEM_PRts" mention from            │CHAT_SYSTEM_PROMPT (:3                            │
+│ - core/schemas.py: remove PhysicalLoad, WorkoutStatus and related.      - db/sqlite_manager.pye DDL + all                 │*_physical_load* methods + migrations (:135,345,535,711–807). (Existing files keep the table hgration needed.)            │
+│ - Delete tools/workout_import.py.                                       - config.py: remove ru                            │- Tests: remove/adjustorkouts_and_notes.py,       │workout cases in testst_prompts.py,               │tests/test_http_api.py; ignore testsprite_tests/).                            │
+│                                                   │
+│ Frontend: delete pages/WorkoutsPage.tsx and SyncContext.tsx; remove the       │
+│ SyncProvider wrapper +remove workout funcs/types  │in api.ts (getWorkouts/createWorkout/updateWorkout/completeWorkout/deleteWorkout/uploadWorkoutFile/syncRunalyze, Workout, WorkoutInput); remove @workout   │
+│ mention handling in Chsx and any workout persona  │
+│ in data/personas.json.                            │
+│                                                   │
+│ 0B. New page structure                            │
+│                                                                               │
+│ Target nav (components/Layout.tsx links):                                     │
+│ - / → "Sohbet" → new full-page ChatPage (renders the Phase-3 ChatBox          │
+│ full-width).                                      │
+│ - /akademik → "Akademiemic tasks only).           │
+│ - /gunluk → "Günlük" →editor +                    │
+│ today/this-week/this-m tasks).                    │
+│ - /pdf → "PDF Otomasyo                            │
+│ - /ideas → "Fikir Defteri" (unchanged).                                       │
+│                                                   │
+│ Implementation:                                                               │
+│ - App.tsx: replace indhatPage; replace manage →   │
+│ ManagePage with akademunluk → DailyTasksPage;     │
+│ remove workouts.                                  │
+│ - New pages/ChatPage.tnd the rebuilt ChatBox.     │
+│ - Refactor components/category: "academic" |      │"daily" prop (it already partitions at :42–43) and render a single section;   │
+│ new AcademicTasksPage/h the right category. Keep  │"Notları analiz et".                                                          │
+│ - DailyTasksPage also + filter overview lifted    │from HomePage.tsx:25–214 (reuse NotionEditor, getDailyNotes/upsertDailyNote,  │
+│ TaskCard).                                        │
+│ - Delete pages/HomePage.tsx and pages/ManagePage.tsx once their pieces are    │
+│ migrated.                                         │
+│ - Update Layout nav ichat icon for /).            │
+│                                                   │
+│ ---                                                                           │
+│ Phase 1 — Backend (pure Python)                                                                    │
+│ 1A. Deep Research (@tool + dedicated node)                                    │
+│                                                                               │
+│ New files                                        - tools/agentic_tools/ysseus SearXNG:             │
+│   - async searxng_search(query, max_results=10) -using httpx.AsyncClienrl (/search?format=json).   │Port engine/category logic from                  odysseus/services/sear                            │  - async fetch_webpag                            │{success,content,title                            │odysseus/services/search/content.py:337 using httpx + BeautifulSoup (add      │
+│ beautifulsoup4 to requ                            │
+│ - tools/agentic_tools/deep_research.py — adapt odysseus/src/deep_research.py into a class DeepResearchEngine:                                              │
+│   - Iterative loop research(question): phases planning →                      │
+│ searching(think/genera+extract) →                 │
+│ analyzing(synthesize) ounds/max_rounds,           │
+│ consecutive_empty_rounn LLM _should_stop check    │
+│ (port :252, :507, :609                            │
+│   - LLM calls go throu                            │core.graph._make_llm(settings.research_model, ...) (reuse, don't reinvent the │
+│ client).                                          │
+│   - Accept a progress callback _emit(**kwargs) (port :788) so phases stream to the frontend.                                                              │
+│   - Reuse extraction/sus, placed in               │core/prompt_templates.                            │
+│                                                   │
+│ Graph wiring                                      │
+│ - Add research_node in core/graph.py (async, params research_llm, sqlite_manager, callbacks): instantiate DeepResearchEngine, run it, save the  │
+│ report as an Idea (Ideport+sources) →             │sqlite_manager.upsert_idea), and return the report as the node's AIMessage    │
+│ (so it renders in chat                            │
+│ - Register node + conditional edge + END edge (mirror existing nodes at       │
+│ graph.py:957–994).                                │
+│ - Add "research_node" to RouteTarget in core/state.py and to _TOOL_FOR_ROUTE (tool label e.g. "deep_research").                                            │
+│ - Add a slash command rastir" → research_node)    │AND allow the LLM routecision choices + router    │
+│ prompt in core/prompt_                            │
+│ - The progress callbac1C).                        │
+│                                                            Config (config.py): adl (default to chat model    │slug), research_max_rounds, research_min_rounds.                              │
+│                                                            1B. Brain (long-term m                            │                                                  │New file db/brain_mana                            │- Wraps a ChromaManagerain_collection) for        │semantic recall (reuse, don't duplicate embedding logic).  - Mirrors each fact incts(id, text, category,     │source, pinned, created_at, updated_at) (add CREATE TABLE +db/sqlite_manager.py f SQLite is the source of    │truth for list/edit; Cetrieval. Keep them in sync │on add/edit/delete.                               │- Methods: add_fact, lte_fact,                    │query_relevant(text, nm_messages(messages)        │(manual/on-demand: flagle user message → LLM with │an EXTRACT_SYSTEM_PROM                            │odysseus/services/memodedup via query_relevant    │similarity threshold b                            │
+│                                                                               │
+│ Wiring                                            │
+│ - Instantiate BrainManager in app.py lifespan (alongside chroma/sqlite),      │
+│ store on app.state.bra                            │
+│ - Retrieval (automatic every turn): in chat_node (core/graph.py:316), after the existing doc retrieval, call brain.query_relevant(query) and prepend the  │
+│ facts into the system ROMPT with a {memory}       │slot). Inject brain into chat_node via partial(...) in build_athena_graph.    │
+│                                                   │
+│ REST API (app.py): GET add), PATCH /brain/{id},   │DELETE /brain/{id}, POST /brain/extract (runs extract_from_messages over    posted recent history,                            │
+│                                                                             1C. Streaming upgrade earch progress)             │                                                  │
+│ - Rewrite the event_stream in app.py:617 to use graph.astream_events(state, version="v2") (or stre deltas stream as           │
+│ {type:"delta",content}                           │
+│ - Add new SSE event ty, {type:"tool_end",tool},  │and {type:"research_progress",phase,round,...} (fed by the Deep Research      │
+│ progress callback via  the SSE generator). Keep  │done/error.                                                                   │
+│                                                  │
+│ ---                                              │
+│ Phase 2 — Theme enginend)                        │
+│                                                                               │
+│ - Theme tokens: In frohe three palettes as       │CSS-variable sets scoped by a class on <html> — theme-aurora (current defaults), theme-cyberpunk (--bg:#0a0a0f; --fg/foreground:#0ff0f--surface/panel:#12101estructive:#e040fb),       │theme-terminal (#000000 / #00ff41 / #0a0a0a / #003b00). Map ontonames (--bg,--foregrou,…) so existing            │components recolor automatically. Add --bg-effect-color per themcanvases.                                        │
+│ - ThemeContext: new frontend/src/ThemeContext.tsx — {theme, setTpersists to localStora on                        │document.documentEleme                           │
+│ - Theme switcher: small control in components/Layout.tsx header (cycle/segmented: Auro                           │
+│ - Canvas components:                             │frontend/src/components/backgrounds/CyberpunkCanvasBackground.tsx (port   _initSynapse) and Termt _initPerlinFlow +        │_bgSmoothNoise). Each: useRef<canvas> + useEffect that sets up DPR-aware  sizing, requestAnimatiect-color, a resize        │listener, and a cleanu removes the listener on   │unmount. Fixed, pointeind content.               │- Mount the matching b on theme (none/Aurora     │gradient stays as-is).                           │
+│                                                                               │
+│ ---                                              │
+│ Phase 3 — Chatbox rebuild (refactor + extend)                                                            │Decompose frontend/srcinto                       │frontend/src/componentlogic (sessions,           │@mentions, #tags, slash commands, in-chat search, export, regenerate, model   override) which lives ostly unchanged):          │
+│ - ChatBox.tsx — message list + autoscroll container; orchestrates the others. - ChatMessage.tsx — maark-gfm plus code syntax   │ highlighting (add reacs Tool-Call blocks         │ (distinct styled card,) driven by                │ tool_start/tool_end; rnel from research_progress │ events (phase/round/so                           │
+│ - ChatInput.tsx — textarea + existing attach button + drag-animages/PDF → existing ; preserves                │mention/command dropdowns.                                   - Update ChatContext.t new event types: delta    │(append), tool_start/tesearch_progress (progress │state), plus existing                            │- Ensure all chat comp they fit                  │Cyberpunk/Terminal.                              │
+│                                                                               │
+│ Deps to add (frontend/ighlighter (+ @types/...). │ Backend (requirements.txt): beautifulsoup4.                                   │
+│                                                  │
+│ ---                                              │
+│ Verification                                     │
+│                                                  │
+│ 1. Backend unit/smoke:                           │
+│   - With OPENROUTER_API_KEY + SEARXNG_URL set, start app: cd ~/Jarvis &&      │
+│ uvicorn app:app --relo                           │
+│   - Deep Research: curl -N -X POST localhost:8000/chat -d '{"message":"/arastir transformer attention","history":[]}' -H 'Content-Type: application/json' → observe research_progress SSE phases, a final report,     │
+│ and a new row via GET                            │
+│   - Brain: POST /brainsend a chat whose answer   │
+│ should use it (confirmextract with recent        │
+│ history → returns new                            │
+│   - Workout removal: G404; /yardim no longer     │lists antrenman.                               - Run existing testsre graph/router tests      │still pass after RouteTarget changes + node aremoved).                                        │
+│ 2. Frontend: cd ~/Jarvis/frontend && npm inst  - Nav shows Sohbet /asyonu / Fikir Defteri (no │Antrenman). / is the facademic tasks; /gunluk    │shows daily note + fil                           │  - Confirm no broken                            │HomePage/ManagePage/Wopm run build → tsc         │passes).                                                                      │
+│   - Switch themes in ht canvas animation mounts; │ resize window (animation reflows); navigate away (no console errors →         │
+│ cleanup works).                                  │
+│   - Chat: send a message → text streams token-by-token; trigger a tool (/gorev ...) → Tool-Call block renders; drag a PDF/image onto input → uploads │
+│ + chips; code in a rep                           │
+│   - Brain modal: open lete facts, "Extract from  │
+│ recent chat" populates                           │
+│ 3. Type/lint: npm run  confirm no TS errors in   │new components.                                  │
+│                                                                               │
+│ Notes / risks                                    │                                                 │
+│ - SearXNG must be running and JSON output enabled (search.formats: [json] in its settings) or Deep Research returns the "search unavailable" fallback.     │
+│ - Switching to astream_events changes the SSE contract — ChatContext parser and the new chat compo the backend change to     │avoid a broken chat.                             │
+│ - Token-delta streaming + tool events should be implemented/tested first (Phase 1C) since both hem.
+
+
+
+
+21.06.2026
+12.24
+
+There are a few things to do. Firstly, remove the "Günüm" page. Replace it with full chatbox page, which you will take from Odysseus.
+Seperate "Akademik" and "Günlük" tasks to two page. They are together in the "Görevler" page. Delete the "Görevler" page and replace it with two page which are "Akademik" and "Günlük".
+Also completely remove the "Antrenman" page, don't forget the remove it from backend.
+
+# Context
+I am building **Athena**, an agentic personal academic assistant.
+**Athena Tech Stack**:
+- Backend: Python 3.12+, FastAPI, LangGraph, LangChain, OpenRouter API
+- Database: aiosqlite, ChromaDB (local)
+- Frontend: Vite, React, TypeScript, Tailwind CSS v3 (Dark theme by default)
+- Architecture: 5-page SPA (`/chat`, `/pdf`, `/tasks`, `/workouts`, `/ideas`).
+Its folder is ~/Jarvis. I changed the name later but didn't change the folder name.
+
+I have another local project called **Odysseus** (a Python/Vanilla JS self-hosted AI workspace). I want to port 5 specific features from Odysseus into Athena.
+
+Since Odysseus uses Vanilla JS / CSS and a different Python architecture, **DO NOT just copy-paste the files.** You must gracefully adapt the logic and architectures into Athena's React+Tailwind and FastAPI+LangGraph ecosystem.
+
+# Features to Integrate
+
+## 1. Chatbox (Full Port)
+**Reference from Odysseus**: `static/js/chat.js`, `static/js/chatRenderer.js`, `static/index.html`
+**Goal**: Replace Athena's current chat component with the advanced capabilities of the Odysseus chatbox.
+**Requirements for Athena**:
+- Create a set of React components (e.g., `ChatBox.tsx`, `ChatMessage.tsx`, `ChatInput.tsx`) in `frontend/src/components/chat/`.
+- Port the SSE (Server-Sent Events) streaming logic from Odysseus so that the text streams gracefully.
+- Support markdown rendering with syntax highlighting for code blocks.
+- **Tool Call Visualization**: If the LangGraph agent uses a tool (e.g., searching, creating a task), it must render a visually distinct "Tool Call" block in the UI just like Odysseus does (e.g., "Agent used tool: `create_task`").
+- Include the drag-and-drop file attachment logic for images/PDFs into the chat input, mapping to Athena's existing `/chat/upload` endpoint.
+
+## 2. Cyberpunk Theme
+**Reference from Odysseus**: `static/js/theme.js` (look for the `cyberpunk` dictionary and `_initSynapse` canvas pattern), `static/style.css`.
+**Goal**: Add a selectable "Cyberpunk" theme to Athena.
+**Requirements for Athena**:
+- The color palette is: `bg:'#0a0a0f', fg:'#0ff0fc', panel:'#12101a', border:'#9b30ff', red:'#e040fb'`. Convert these into CSS Variables in Athena's `index.css` or extend the `tailwind.config.js`.
+- Odysseus uses an HTML5 Canvas to draw a dynamic "Synapse" background effect. Extract this canvas animation logic and turn it into a reusable React component: `<CyberpunkCanvasBackground />`.
+- Mount this background on the main layout when the theme is activated. Ensure it respects `resize` events and cleans up its animation frame on unmount.
+
+## 3. Terminal Theme
+**Reference from Odysseus**: `static/js/theme.js` (look for the `terminal` dictionary and `_initPerlinFlow` canvas pattern).
+**Goal**: Add a selectable "Terminal" theme to Athena.
+**Requirements for Athena**:
+- The color palette is: `bg:'#000000', fg:'#00ff41', panel:'#0a0a0a', border:'#003b00', red:'#00ff41'`. Add these to the theme variables.
+- Extract the `perlin-flow` canvas animation logic from Odysseus and convert it into a React component: `<TerminalCanvasBackground />`.
+- Add a theme switcher in the frontend (perhaps in the sidebar or settings modal) that allows the user to switch between Default (Aurora Indigo), Cyberpunk, and Terminal.
+
+## 4. Deep Research
+**Reference from Odysseus**: `src/deep_research.py`, `src/research_utils.py`
+**Goal**: Implement the Iterative Think→Search→Extract→Synthesize research loop in Athena.
+**Requirements for Athena**:
+- Copy the core iterative logic from Odysseus's `deep_research.py` but refactor it to become a **LangGraph Node** or an **Agentic Tool** (`@tool`) in Athena (`tools/agentic_tools/deep_research.py`).
+- The engine must support multiple rounds of searching and reading.
+- Connect this to Athena's OpenRouter integration.
+- Ensure the live progress (phases: planning, searching, reading, analyzing) can be streamed back to the frontend via the Chatbox or a dedicated Research UI panel.
+- The final comprehensive report generated by Deep Research should either be sent to the user in chat or automatically saved as an "Idea/Note" in Athena's database.
+
+## 5. Brain (Long Term Memory)
+**Reference from Odysseus**: `services/memory/` module, UI traces in `docs/index.html` (Memory modal).
+**Goal**: Give Athena's agent a persistent memory system (Brain) so it remembers user facts, preferences, and past context across sessions.
+**Requirements for Athena**:
+- Athena already has a `ChromaManager` (`db/chroma_manager.py`). Extend this or create a new `BrainManager` to store semantic "memory chunks" or "facts".
+- Implement a background extraction tool (similar to Odysseus's `memory_extractor.py`) that analyzes the user's chat messages asynchronously and extracts permanent facts (e.g., "User is studying Computer Science", "User prefers bullet points").
+- Modify the LangGraph `router` or `chat` node so that every time the user sends a message, Athena queries the ChromaDB Brain for relevant facts and injects them into the system prompt.
+- Add a simple "Brain" modal in the React frontend where the user can view, edit, or manually delete extracted facts.
+
+# Execution Plan
+Please implement these features step-by-step.
+1. **First**, build the Deep Research and Brain backend modules, as they are pure Python and integrate nicely with LangGraph.
+2. **Second**, build the Theme Engine (Cyberpunk & Terminal Canvas backgrounds + Tailwind CSS variable integration) in the React frontend.
+3. **Finally**, rebuild the Chatbox in React, ensuring it supports tool calls, SSE, attachments, and fits the new themes.
+
+Before writing the code, briefly outline your architecture plan for integrating the Canvas themes into React and how you plan to wire the Deep Research loop into LangGraph. Once we agree on the architecture, we will proceed with the code.
+
+
+
+
 15.45
 Tüm Jarvis ismi geçen yerleri Athena yap.
 Bir de günüm sayfasındaki filtreler alt görevleri kapsamıyor. Yani o filtreyi uyguladığımda bugüne bir alt görev varsa ana görev bugüne olmadığı için gözükmüyor. Bunu da düzelt.

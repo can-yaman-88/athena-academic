@@ -14,9 +14,24 @@ services:
       # address the browser actually uses to load the frontend. On a remote server
       # set CORS_ORIGINS in .env, e.g. CORS_ORIGINS=http://<server-ip>:8088
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8088}
+      # Deep Research web search backend. SearXNG runs as the `searxng` service
+      # below, reachable by name on the compose network. Override in .env if you
+      # point at a different instance.
+      - SEARXNG_URL=${SEARXNG_URL:-http://searxng:8080}
+    extra_hosts:
+      # Lets the container reach a HOST-run service if ever needed (no-op on
+      # Docker Desktop).
+      - "host.docker.internal:host-gateway"
     volumes:
       # Persist SQLite (data/athena.db) and ChromaDB (data/chroma) across restarts.
       - ./data:/app/data
+      # Share the host's ChromaDB embedding-model cache (all-MiniLM-L6-v2, ~80MB)
+      # so it is NOT re-downloaded on every container (re)build. Without this the
+      # first chat/brain call hangs while the model downloads from S3, which the
+      # browser surfaces as "NetworkError". The host already has it cached.
+      - ${HOME}/.cache/chroma:/root/.cache/chroma
+    depends_on:
+      - searxng
     restart: unless-stopped
 
   frontend_service:
@@ -35,4 +50,14 @@ services:
       - "8088:80"
     depends_on:
       - api_service
+    restart: unless-stopped
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    volumes:
+      - ./searxng-data:/etc/searxng
+    environment:
+      - SEARXNG_BASE_URL=http://${SEARXNG_HOSTNAME:-localhost}:8080/
+      - SEARXNG_SEARCH_FORMATS=html,json
     restart: unless-stopped
