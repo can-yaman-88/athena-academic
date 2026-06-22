@@ -56,7 +56,10 @@ services:
     image: searxng/searxng:latest
     container_name: searxng
     volumes:
-      - ./searxng-data:/etc/searxng
+      # Mount only our tracked config file; the rest of /etc/searxng (uwsgi.ini
+      # etc.) is provided by the image. Keeping this in a repo-owned dir (not a
+      # container-created one) means it ships with the clone on a fresh server.
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
     environment:
       - SEARXNG_BASE_URL=http://${SEARXNG_HOSTNAME:-localhost}:8080/
       - SEARXNG_SEARCH_FORMATS=html,json

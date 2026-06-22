@@ -31,5 +31,5 @@ frontend/design-system/
 # TestSprite runtime artifacts (logs, raw results — bulky/regenerated)
 testsprite_tests/tmp/
 
-# SearXNG container runtime data
+# SearXNG container runtime data (the tracked config lives in /searxng/).
 /searxng-data/
