@@ -9,7 +9,7 @@ import {
   type NotePage,
 } from "../api";
 import NotionEditor from "../components/NotionEditor";
-import { ChevronRight, FileText } from "lucide-react";
+import { ChevronRight, FileText, Save, X } from "lucide-react";
 
 /** Full-page note editor with breadcrumb, autosave and nested sub-pages. */
 export default function NoteEditorPage() {
@@ -73,6 +73,18 @@ export default function NoteEditorPage() {
     [persist]
   );
 
+  // Flush any pending autosave and persist immediately (used by the Kaydet
+  // button and on close, so nothing is lost without waiting for the debounce).
+  const saveNow = useCallback(async () => {
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    await persist(title, contentRef.current);
+  }, [persist, title]);
+
+  const closeEditor = useCallback(async () => {
+    await saveNow();
+    navigate("/notlar");
+  }, [saveNow, navigate]);
+
   if (error) {
     return <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-300">{error}</div>;
   }
@@ -96,6 +108,21 @@ export default function NoteEditorPage() {
         <ChevronRight size={12} className="text-zinc-600" />
         <span className="max-w-[200px] truncate text-zinc-200">{title || "Başlıksız"}</span>
         <span className="ml-auto text-zinc-500">{saveMsg}</span>
+        <button
+          onClick={() => void saveNow()}
+          className="ml-2 inline-flex items-center gap-1 rounded-md border border-line bg-surface-2 px-2 py-1 text-zinc-300 hover:border-primary-500 hover:text-zinc-100"
+          title="Kaydet"
+        >
+          <Save size={13} /> Kaydet
+        </button>
+        <button
+          onClick={() => void closeEditor()}
+          className="inline-flex items-center justify-center rounded-md border border-line bg-surface-2 p-1.5 text-zinc-300 hover:border-rose-500/60 hover:text-rose-300"
+          title="Kaydet ve kapat"
+          aria-label="Kapat"
+        >
+          <X size={14} />
+        </button>
       </div>
 
       {/* Title */}

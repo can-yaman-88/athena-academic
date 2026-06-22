@@ -9,8 +9,7 @@ geri kalan metin komutun girdisi olarak kullanılır. Tarih belirtmezsen görev
 |-------|----------|-------|
 | `/görev <metin>` | Günlük (general) görev oluşturur. Ekstra detaylar notlara yazılır. | `/görev Market alışverişi` |
 | `/agörev <metin>` | Akademik görev oluşturur (alt görev üretmez). | `/agörev Lineer cebir problem seti 4` |
-| `/altgörev(n) <metin>` | Günlük görev oluşturur ve `n` alt göreve böler. | `/altgörev(3) Sunum hazırlığı` |
-| `/altakademik(n) <metin>` | Akademik görev oluşturur ve `n` alt göreve böler. | `/altakademik(5) Dönem projesi` |
+| `/altgörev(n) <metin>` | Akademik görev oluşturur ve `n` alt göreve böler. (Eski `/altakademik` adı hâlâ çalışır.) | `/altgörev(5) Dönem projesi` |
 | `/fikir(n) <metin>` | Verilen metinden en fazla `n` fikir çıkarır. | `/fikir(3) uzun beyin fırtınası notu` |
 | `/antrenman <metin>` | Tek bir tamamlanan antrenman ekler (süre + RPE). | `/antrenman 45 dk tempo koşu RPE 7` |
 | `/seans <metin>` | Akademik bir görevin altına çalışma seansı ekler (@görev_adı). | `/seans 2 saat integral tekrarı @analiz` |

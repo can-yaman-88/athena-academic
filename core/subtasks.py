@@ -36,7 +36,7 @@ class SubtaskPlan(BaseModel):
 
 SUBTASK_SYSTEM_PROMPT = """\
 [Context]
-Athena creates actionable project plans. The user has created an academic or daily project/task and, by using a planning command (/plan, /altgorev, /altakademik, /aralik), has ALREADY asked for it to be decomposed into manageable subtasks. The current date and time is {now}.
+Athena creates actionable project plans. The user has created an academic or daily project/task and, by using a planning command (/plan, /altgorev, /aralik), has ALREADY asked for it to be decomposed into manageable subtasks. The current date and time is {now}.
 
 This decomposition is the whole point of the command — the user never has to say "break this down" or "make a plan". Always produce a breakdown.
 

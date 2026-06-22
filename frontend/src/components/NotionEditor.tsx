@@ -6,7 +6,7 @@ import TaskItem from "@tiptap/extension-task-item";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Collapsible, PageLink, FileChip, Embed } from "./editor/nodes";
+import { Collapsible, PageLink, FileChip, Embed, Callout } from "./editor/nodes";
 
 export interface InlineUpload {
   url: string;
@@ -57,6 +57,7 @@ export default function NotionEditor({
       Image,
       Link.configure({ openOnClick: false, autolink: true }),
       Collapsible,
+      Callout,
       FileChip,
       Embed,
       PageLink.configure({ onOpenPage }),
@@ -137,8 +138,8 @@ export default function NotionEditor({
     { title: "Alıntı", icon: "❝", action: () => editor?.chain().focus().toggleBlockquote().run() },
     { title: "Kod bloğu", icon: "💻", action: () => editor?.chain().focus().toggleCodeBlock().run() },
     { title: "Çizgi", icon: "—", action: () => editor?.chain().focus().setHorizontalRule().run() },
-    { title: "Uyarı (Callout)", icon: "⚠️", action: () => editor?.chain().focus().insertContent("> **UYARI:** ").run() },
-    { title: "Tarih", icon: "📅", action: () => editor?.chain().focus().insertContent(`**${new Date().toLocaleDateString("tr-TR")}** `).run() },
+    { title: "Uyarı (Callout)", icon: "⚠️", action: () => editor?.chain().focus().insertContent({ type: "callout", content: [{ type: "paragraph" }] }).run() },
+    { title: "Tarih", icon: "📅", action: () => editor?.chain().focus().insertContent([{ type: "text", marks: [{ type: "bold" }], text: new Date().toLocaleDateString("tr-TR") }, { type: "text", text: " " }]).run() },
     {
       title: "Görsel",
       icon: "🖼",

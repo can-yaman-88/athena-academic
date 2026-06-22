@@ -10,7 +10,7 @@ import {
 } from "../api";
 import { useChat } from "../ChatContext";
 import { Card } from "../ui";
-import { CheckSquare, FileText, Lightbulb, MessageSquare } from "lucide-react";
+import { CheckSquare, FileText, Lightbulb, MessageSquare, PencilLine } from "lucide-react";
 
 const todayStr = () => {
   const d = new Date();
@@ -53,6 +53,9 @@ export default function DayPage() {
     (t) => t.category === "academic" && t.parent_id === null && onDay(t.deadline)
   );
   const dayNotes = notes.filter((n) => onDay(n.created_at));
+  // Notes touched on this day but created on a different one — i.e. edits, not
+  // new notes (so a note created+edited the same day only shows under "Notlar").
+  const editedNotes = notes.filter((n) => onDay(n.updated_at) && !onDay(n.created_at));
   const dayIdeas = ideas.filter((i) => onDay(i.created_at));
 
   // Find the first chat message on this day → deep-link target.
@@ -138,6 +141,21 @@ export default function DayPage() {
           >
             <FileText size={14} className="text-zinc-500" />
             <span className="flex-1 truncate">{n.title || "Başlıksız"}</span>
+          </button>
+        ))}
+      </Section>
+
+      <Section icon={<PencilLine size={15} className="text-primary-300" />} title="Düzenlenen Notlar" count={editedNotes.length}>
+        {editedNotes.length === 0 && <p className="p-2 text-sm text-zinc-500">Bu gün düzenlenen not yok.</p>}
+        {editedNotes.map((n) => (
+          <button
+            key={n.id}
+            onClick={() => navigate(`/notlar/${n.id}`)}
+            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-zinc-200 hover:bg-white/[0.04]"
+          >
+            <PencilLine size={14} className="text-zinc-500" />
+            <span className="flex-1 truncate">{n.title || "Başlıksız"}</span>
+            <span className="text-xs text-zinc-500">{n.created_at.slice(0, 10)}'de oluşturuldu</span>
           </button>
         ))}
       </Section>

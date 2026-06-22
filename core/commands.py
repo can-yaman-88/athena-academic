@@ -31,8 +31,8 @@ COMMANDS: dict[str, Command] = {
         "Akademik görev ekler. Alt görev parçalaması yapılmaz.",
         {"operation": "create", "category": "academic", "generate_subtasks": False},
     ),
-    "altakademik": Command(
-        "altakademik", "task_tool_node",
+    "altgorev": Command(
+        "altgorev", "task_tool_node",
         "Akademik görev ekler ve verilen sayı kadar alt göreve böler.",
         {"operation": "create", "category": "academic", "generate_subtasks": True},
     ),
@@ -68,10 +68,12 @@ COMMANDS: dict[str, Command] = {
     ),
 }
 
-# A few English aliases for convenience.
+# Türkçe yazımlar + geriye dönük takma adlar. ``altakademik`` eski adı; artık
+# tek bir ``altgorev`` komutuna işaret eder (ikisi de aynı işi yapıyordu).
 _ALIASES = {
     "agörev": "agorev",
-    "altakademik": "altakademik",
+    "altgörev": "altgorev",
+    "altakademik": "altgorev",
     "aralık": "aralik",
     "yardım": "yardim",
     "araştır": "arastir",

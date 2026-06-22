@@ -25,8 +25,8 @@ Arayüz beş sayfadan oluşur:
 ### Öne çıkan yetenekler
 - **Sohbetten görev oluştur/düzenle**: tarih verilmezse bugünkü, yoksa en yakın gelecekteki
   görev düzenlenir. Eksik bilgi hata vermez; mantıklı varsayılanlar uygulanır.
-- **Otomatik Alt Görev Üretimi**: LLM kullanılarak bir ana göreve (veya plana) ait alt görevler `/altgörev`, `/altakademik` ve `/plan` komutlarıyla otomatik olarak üretilip veritabanına eklenir.
-- **`/` komutları** (deterministik yönlendirme): `/görev`, `/agörev`, `/altgörev`, `/altakademik`, `/fikir`, `/antrenman`, `/seans`, `/plan`, `/aralık`, `/yardim`. Görev
+- **Otomatik Alt Görev Üretimi**: LLM kullanılarak bir ana göreve (veya plana) ait alt görevler `/altgörev` ve `/plan` komutlarıyla otomatik olarak üretilip veritabanına eklenir.
+- **`/` komutları** (deterministik yönlendirme): `/görev`, `/agörev`, `/altgörev`, `/fikir`, `/antrenman`, `/seans`, `/plan`, `/aralık`, `/yardim`. Görev
   yönetimi komutları ad tam eşleşmezse **en benzer** görevi hedefler. Tümü [`codes.md`](codes.md)'de.
 - **Sohbete dosya ekleme**: PDF → her zaman Markdown, görüntü → vision modeli. Eklenen
   materyal göreve iliştirilir ve proje görevlerinde **AI alt görev üretiminde** kullanılır.

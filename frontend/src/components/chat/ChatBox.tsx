@@ -17,8 +17,7 @@ import ChatInput from "./ChatInput";
 const COMMANDS = [
   ["/görev", "görev ekle"],
   ["/agörev", "akademik görev ekle"],
-  ["/altgörev", "otomatik alt görevler"],
-  ["/altakademik", "otomatik akademik alt görevler"],
+  ["/altgörev", "akademik görev + otomatik alt görevler (örn: /altgörev(3))"],
   ["/fikir", "fikir çıkar (örn: /fikir(3))"],
   ["/arastir", "derin web araştırması"],
   ["/seans", "akademik seans ekle (@görev_adi)"],

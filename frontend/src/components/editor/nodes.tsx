@@ -244,3 +244,35 @@ export const Embed = Node.create({
     return ReactNodeViewRenderer(EmbedView);
   },
 });
+
+/* -------------------------------------------------------------------------- */
+/* Callout — boxed "⚠️" note with real, editable block content.               */
+/* Replaces the old approach of inserting literal "> **UYARI:**" markdown that */
+/* TipTap rendered as raw text.                                               */
+/* -------------------------------------------------------------------------- */
+function CalloutView() {
+  return (
+    <NodeViewWrapper className="my-1.5 flex gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+      <span contentEditable={false} className="select-none pt-0.5 text-lg leading-none">
+        ⚠️
+      </span>
+      <NodeViewContent className="min-w-0 flex-1 [&_p]:my-0" />
+    </NodeViewWrapper>
+  );
+}
+
+export const Callout = Node.create({
+  name: "callout",
+  group: "block",
+  content: "block+",
+  defining: true,
+  parseHTML() {
+    return [{ tag: "div[data-callout]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["div", mergeAttributes(HTMLAttributes, { "data-callout": "" }), 0];
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(CalloutView);
+  },
+});

@@ -1,3 +1,13 @@
+22.06.2026
+17.49
+Merak ettiğim üzere eğer bir notu başka günler düzenlersek en son düzenlendiği tarih mi günüm sayfasında çıkacak yoksa oluşturulduğu tarihin günüm sayfasında mı? Bunun için bir de günm sayfasında notlar kısmının altında düzenlenen notlar olarak bir kısım daha eklememiz lazım.
+Ayrıca notlar kısmında not girmek için tam sayfa açılan pencereye kaydet ve çarpı işaretleri de ekle. Her seferinde geri tuşuna basmak zorunda kalıyorum.
+Komutlarda altgörev ve altakademik diye iki tane aynı işi yapan komut var. Bu komutların promptlarını birleştir ve altgörev diye bir komut oluştur.
+Ayrıca callout, alıntı ve tarih ekleme komutlarının (not alırken) görüntüsü bozuk. Arkadaki md kodu render edilmiyor.
+
+
+
+
 17.23
 Anladığım kadarıyla BlockNote kullnırsam yapay zeka ile iletişimimde bir takım kopukluklar ve ek aracı sistemler gerçekleşiyor. Bunu istemiyorum. Zaten amacımız Notion'un o karmaşık özelliklerinden kurtulmaktı. Ama burada bir sorun daha karşımıza çıkıyor: Dosyalama sistemi... Ben Notion gibi sayfa içinde sayfa oluşturma altyapısını kurmak istiyorum. Eğer bunu mevcut metin editörünü genişleterek yapabileceksek kesinlikle blocknote yerine kendi sistemimizin geliştirilmesinden yanayım.
 O zaman şöyle bir yol izliyoruz:
