@@ -193,19 +193,32 @@ class Settings(BaseModel):
     notes_model: str = Field(default="qwen/qwen3.7-max")
     notes_model_max_tokens: int = Field(default=4096, gt=0)
 
-    # --- Runalyze integration ---------------------------------------------
-    # Personal-API token is read from the environment (or .env fallback) at
-    # call time; never stored in settings. Activities are pulled and stored as
-    # completed workouts both on demand and by a background loop.
-    runalyze_token_env: str = Field(default="RUNALYZE_TOKEN")
-    runalyze_sync_interval_min: int = Field(
-        default_factory=lambda: _env_int("RUNALYZE_SYNC_INTERVAL_MIN", 30),
-        gt=0,
+    # --- Deep Research (SearXNG-backed iterative research) -----------------
+    # Web search is performed against a self-hosted SearXNG instance with JSON
+    # output enabled. The engine searches, fetches pages, extracts findings and
+    # synthesises a report over multiple rounds.
+    searxng_url: str = Field(
+        default_factory=lambda: os.environ.get("SEARXNG_URL", "http://localhost:8080")
     )
-    # How many days back the auto-sync looks (paging stops past this cutoff).
-    runalyze_sync_lookback_days: int = Field(default=90, gt=0)
-    # Safety cap on pages fetched per sync run.
-    runalyze_sync_max_pages: int = Field(default=20, gt=0)
+    research_model: str = Field(default="qwen/qwen3.7-max")
+    research_model_max_tokens: int = Field(default=4096, gt=0)
+    research_min_rounds: int = Field(default=1, ge=1)
+    research_max_rounds: int = Field(default=4, ge=1)
+    research_max_urls_per_round: int = Field(default=4, gt=0)
+    research_max_content_chars: int = Field(default=8000, gt=0)
+    research_time_budget_seconds: int = Field(default=240, gt=0)
+
+    # --- Brain (long-term memory) -----------------------------------------
+    # Semantic facts the agent remembers across sessions. Embeddings live in a
+    # dedicated Chroma collection; the canonical rows live in SQLite (brain_facts).
+    brain_collection: str = Field(default="brain_facts")
+    brain_model: str = Field(default="qwen/qwen3.7-max")
+    brain_model_max_tokens: int = Field(default=2048, gt=0)
+    # Cosine-distance threshold below which a candidate fact is treated as a
+    # duplicate of an existing one (lower = more similar). 0.25 ≈ very similar.
+    brain_dedup_distance: float = Field(default=0.25, ge=0)
+    # Max facts injected into the chat system prompt per turn.
+    brain_recall_k: int = Field(default=5, gt=0)
 
     # --- Task extraction defaults -----------------------------------------
     # Applied by the task tool / extractor so the user never has to spell out

@@ -10,46 +10,49 @@ export default {
         // Inter for UI text; JetBrains Mono for the terminal, logs and metrics.
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        // Fira Code for the chatbox (matches Odysseus).
+        chat: ["Fira Code", "ui-monospace", "JetBrains Mono", "monospace"],
       },
       colors: {
-        // Layered dark surfaces (mirror the CSS variables in index.css) so
-        // components can use bg-surface / bg-elevated for a cohesive depth scale.
+        // All theme colors resolve to CSS variables (RGB channels) defined in
+        // index.css, so swapping the .theme-* class on <html> recolors every
+        // utility — and the `rgb(var(--x) / <alpha-value>)` form keeps opacity
+        // modifiers (e.g. bg-primary-500/15) working. Hairline `line` tokens
+        // hold a baked-in alpha, so they map to the var directly.
         surface: {
-          DEFAULT: "#0e0e18",
-          2: "#14141f",
+          DEFAULT: "rgb(var(--surface) / <alpha-value>)",
+          2: "rgb(var(--surface-2) / <alpha-value>)",
         },
-        elevated: "#171724",
+        elevated: "rgb(var(--elevated-solid) / <alpha-value>)",
         line: {
-          DEFAULT: "rgba(255,255,255,0.07)",
-          strong: "rgba(255,255,255,0.13)",
+          DEFAULT: "var(--line)",
+          strong: "var(--line-strong)",
         },
-        // Iris / violet primary — the new brand accent (replaces emerald).
         primary: {
-          DEFAULT: "#8b7cf6",
-          50: "#f2f0fe",
-          100: "#e6e2fd",
-          200: "#cfc7fb",
-          300: "#b3a6f9",
-          400: "#8b7cf6",
-          500: "#6d5de0",
-          600: "#5847c4",
-          700: "#473a9e",
-          800: "#3a3080",
-          900: "#2e2763",
+          DEFAULT: "rgb(var(--primary) / <alpha-value>)",
+          50: "rgb(var(--primary-50) / <alpha-value>)",
+          100: "rgb(var(--primary-100) / <alpha-value>)",
+          200: "rgb(var(--primary-200) / <alpha-value>)",
+          300: "rgb(var(--primary-300) / <alpha-value>)",
+          400: "rgb(var(--primary-400) / <alpha-value>)",
+          500: "rgb(var(--primary-500) / <alpha-value>)",
+          600: "rgb(var(--primary-600) / <alpha-value>)",
+          700: "rgb(var(--primary-700) / <alpha-value>)",
+          800: "rgb(var(--primary-800) / <alpha-value>)",
+          900: "rgb(var(--primary-900) / <alpha-value>)",
         },
-        // Teal data/secondary accent for charts, metrics and positive deltas.
         accent: {
-          DEFAULT: "#2dd4bf",
-          300: "#5eead4",
-          400: "#2dd4bf",
-          500: "#14b8a6",
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          300: "rgb(var(--accent-300) / <alpha-value>)",
+          400: "rgb(var(--accent-400) / <alpha-value>)",
+          500: "rgb(var(--accent-500) / <alpha-value>)",
         },
       },
       boxShadow: {
-        // Soft, layered elevation: tight contact + diffuse, plus a violet glow.
+        // Soft, layered elevation: tight contact + diffuse, plus a themed glow.
         card: "0 1px 2px rgba(0,0,0,0.45), 0 6px 16px rgba(0,0,0,0.38)",
         "card-hover": "0 1px 2px rgba(0,0,0,0.5), 0 16px 40px rgba(0,0,0,0.5)",
-        glow: "0 0 0 1px rgba(139,124,246,0.4), 0 8px 28px rgba(139,124,246,0.22)",
+        glow: "0 0 0 1px rgb(var(--primary) / 0.4), 0 8px 28px rgb(var(--primary) / 0.22)",
       },
       keyframes: {
         "fade-in": {

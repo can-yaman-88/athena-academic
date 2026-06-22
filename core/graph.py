@@ -36,20 +36,17 @@ from core.prompt_templates import (
     IDEA_EXTRACTION_SYSTEM_PROMPT,
     SESSION_EXTRACTION_SYSTEM_PROMPT,
     TASK_EXTRACTION_SYSTEM_PROMPT,
-    WORKOUT_PLAN_SYSTEM_PROMPT,
     IdeaExtractionList,
     RouteDecision,
     SessionExtraction,
     TaskExtraction,
     TaskExtractionList,
-    WorkoutPlan,
 )
 from core.schemas import (
     AcademicSession,
     AcademicSubtype,
     Material,
     Note,
-    PhysicalLoad,
     Task,
     TaskCategory,
     TaskStatus,
@@ -64,9 +61,9 @@ _TOOL_FOR_ROUTE: dict[RouteTarget, Optional[str]] = {
     "chat_node": None,
     "pdf_tool_node": "process_pdf",
     "task_tool_node": "add_task",
-    "workout_tool_node": "log_workout",
     "session_node": "add_session",
     "idea_extractor_node": "extract_ideas",
+    "research_node": "deep_research",
 }
 
 _PDF_PATH_RE = re.compile(r"\S+\.pdf\b", re.IGNORECASE)
@@ -144,15 +141,6 @@ def _default_task_extractor_llm(callbacks: Optional[list] = None) -> Any:
         callbacks=callbacks,
     )
     return _make_structured_llm(llm, TaskExtractionList)
-
-
-def _default_workout_extractor_llm(callbacks: Optional[list] = None) -> Any:
-    """Deterministic extractor bound to the WorkoutPlan schema."""
-    llm = _make_llm(
-        settings.router_model, settings.router_max_tokens, temperature=0,
-        callbacks=callbacks,
-    )
-    return _make_structured_llm(llm, WorkoutPlan)
 
 
 def _default_session_extractor_llm(callbacks: Optional[list] = None) -> Any:
@@ -273,7 +261,7 @@ def _resolve_task_by_name(
     if not include_completed:
         cands = [t for t in cands if t.status != TaskStatus.COMPLETED]
     if target_date is not None:
-        cands = [t for t in cands if t.deadline.date() == target_date]
+        cands = [t for t in cands if t.deadline and t.deadline.date() == target_date]
     if not cands:
         return None
     name = (name or "").strip().lower()
@@ -314,32 +302,45 @@ def router_node(state: AthenaState, *, router_llm: Any) -> dict[str, Any]:
 
 
 async def chat_node(
-    state: AthenaState, *, chat_llm: Any = None, chroma: Any = None, callbacks: Any = None
+    state: AthenaState,
+    *,
+    chat_llm: Any = None,
+    chroma: Any = None,
+    brain: Any = None,
+    callbacks: Any = None,
 ) -> dict[str, Any]:
-    """Answer conversationally, grounded in retrieved document context."""
+    """Answer conversationally, grounded in retrieved document context + memory."""
     # /yardim is deterministic — list commands without an LLM call.
     if state.get("command") == "yardim":
         return {"messages": [AIMessage(content=help_text())], "active_tool": None}
 
+    query = _last_human_message(state["messages"])
+
     context = ""
-    if chroma is not None:
-        query = _last_human_message(state["messages"])
-        if query:
-            try:
-                results = chroma.query_documents(query, n_results=3)
-                context = "\n\n".join(
-                    r["text"] for r in results if r.get("text")
-                )
-            except Exception:
-                # Retrieval is best-effort; never let it break the chat turn.
-                context = ""
+    if chroma is not None and query:
+        try:
+            results = chroma.query_documents(query, n_results=3)
+            context = "\n\n".join(r["text"] for r in results if r.get("text"))
+        except Exception:
+            # Retrieval is best-effort; never let it break the chat turn.
+            context = ""
+
+    # Long-term memory (Brain): inject relevant remembered facts about the user.
+    memory = ""
+    if brain is not None and query:
+        try:
+            facts = await brain.query_relevant(query, n=settings.brain_recall_k)
+            memory = "\n".join(f"- {f['text']}" for f in facts if f.get("text"))
+        except Exception:
+            memory = ""
 
     attach = _attachments_text(state)
     if attach:
         context = (context + "\n\n" if context else "") + "[Attached by user]\n" + attach[:6000]
 
     system = CHAT_SYSTEM_PROMPT.format(
-        context=context or "(no relevant context found)"
+        context=context or "(no relevant context found)",
+        memory=memory or "(no stored facts yet)",
     )
     
     llm_to_use = chat_llm
@@ -397,7 +398,7 @@ async def _generate_subtasks(
     payload = (
         f"Parent task: {parent.title}\nDiscipline: {parent.discipline}\n"
         f"Subtype: {parent.subtype.value if parent.subtype else 'n/a'}\n"
-        f"Deadline: {parent.deadline.isoformat()}\n\n"
+        f"Deadline: {parent.deadline.isoformat() if parent.deadline else 'none (parent has no deadline → leave subtask deadlines null)'}\n\n"
         f"Material/spec (may be empty):\n{context_text or '(none)'}"
     )
     limit_text = (
@@ -655,78 +656,6 @@ async def task_tool_node(
     }
 
 
-async def workout_tool_node(
-    state: AthenaState,
-    *,
-    workout_extractor_llm: Any = None,
-    sqlite_manager: Any = None,
-    callbacks: Any = None,
-) -> dict[str, Any]:
-    """Log a single workout or import a multi-day plan (text or attachment)."""
-    user_text = _last_human_message(state["messages"])
-    command, remainder, _ = parse_command(user_text)
-    working_text = remainder if command else user_text
-    hints = COMMANDS[command.name].hints if command else {}
-
-    override = state.get("model_override")
-    if override:
-        from core.graph import _make_llm, _make_structured_llm
-        from core.prompt_templates import WorkoutPlan
-        try:
-            base_llm = _make_llm(override, settings.chat_max_tokens, callbacks=callbacks)
-            workout_extractor_llm = _make_structured_llm(base_llm, WorkoutPlan)
-        except Exception as e:
-            logger.warning("Could not override workout model with %s: %s", override, e)
-
-    if sqlite_manager is None or workout_extractor_llm is None:
-        return {"messages": [AIMessage(content="[mock] workout tool not wired.")],
-                "active_tool": "log_workout"}
-
-    now = datetime.now()
-    attach_text = _attachments_text(state)
-    source = working_text + (f"\n\n[Attached plan]\n{attach_text[:8000]}" if attach_text else "")
-    try:
-        plan: Optional[WorkoutPlan] = await workout_extractor_llm.ainvoke(
-            [
-                SystemMessage(content=WORKOUT_PLAN_SYSTEM_PROMPT.format(
-                    now=now.date().isoformat())),
-                HumanMessage(content=source),
-            ]
-        )
-    except Exception as exc:
-        logger.exception("workout extraction failed")
-        return {"messages": [AIMessage(content=f"Antrenmanı çözümleyemedim: {exc}")],
-                "active_tool": "log_workout"}
-
-    items = plan.workouts if plan else []
-    if not items:
-        return {"messages": [AIMessage(content="Eklenecek bir antrenman bulamadım.")],
-                "active_tool": "log_workout"}
-
-    from core.schemas import WorkoutStatus
-    
-    saved = 0
-    default_status = hints.get("status", "completed")
-    for it in items:
-        try:
-            d = date_type.fromisoformat(it.date) if it.date else now.date()
-        except ValueError:
-            d = now.date()
-        load = PhysicalLoad(
-            date=d, 
-            duration_minutes=it.duration_minutes, 
-            rpe_score=it.rpe_score, 
-            status=WorkoutStatus(default_status)
-        )
-        await sqlite_manager.create_physical_load(load)
-        saved += 1
-
-    return {
-        "messages": [AIMessage(content=f"{saved} antrenman eklendi.")],
-        "active_tool": "log_workout",
-    }
-
-
 async def session_node(
     state: AthenaState,
     *,
@@ -863,6 +792,84 @@ async def idea_extractor_node(
 
 
 
+async def research_node(
+    state: AthenaState,
+    *,
+    research_llm: Any = None,
+    sqlite_manager: Any = None,
+    callbacks: Any = None,
+) -> dict[str, Any]:
+    """Run multi-round Deep Research and stream live progress to the client.
+
+    The final report is returned as an ``AIMessage`` (rendered in chat) and also
+    saved as an Idea so it persists in the Fikir Defteri.
+    """
+    user_text = _last_human_message(state["messages"])
+    command, remainder, _ = parse_command(user_text)
+    question = (remainder if command else user_text).strip()
+
+    if not question:
+        return {
+            "messages": [AIMessage(content="Araştırılacak bir konu belirtmedin.")],
+            "active_tool": "deep_research",
+        }
+    if research_llm is None:
+        return {
+            "messages": [AIMessage(content="[mock] Deep Research not wired (no API key).")],
+            "active_tool": "deep_research",
+        }
+
+    # Bridge live progress to the SSE stream via LangGraph's custom stream writer.
+    writer = None
+    try:
+        from langgraph.config import get_stream_writer
+
+        writer = get_stream_writer()
+    except Exception:  # pragma: no cover - older langgraph / no streaming context
+        writer = None
+
+    def _emit(data: dict[str, Any]) -> None:
+        if writer is not None:
+            try:
+                writer({"type": "research_progress", **data})
+            except Exception:
+                pass
+
+    from tools.agentic_tools.deep_research import DeepResearchEngine
+
+    engine = DeepResearchEngine(llm=research_llm, progress=_emit)
+    try:
+        report, sources = await engine.research(question)
+    except Exception as exc:
+        logger.exception("deep research failed")
+        return {
+            "messages": [AIMessage(content=f"Araştırma başarısız oldu: {exc}")],
+            "active_tool": "deep_research",
+        }
+
+    sources_md = ""
+    if sources:
+        lines = "\n".join(
+            f"{i}. [{s.get('title') or s.get('url')}]({s.get('url')})"
+            for i, s in enumerate(sources, 1)
+        )
+        sources_md = f"\n\n---\n\n**Kaynaklar**\n\n{lines}"
+
+    full = (report or "Araştırma sonuç üretemedi.") + sources_md
+
+    # Persist the report as an Idea so it lives in the Fikir Defteri.
+    if sqlite_manager is not None and report:
+        try:
+            from core.schemas import Idea
+
+            title = question if len(question) <= 120 else question[:117] + "…"
+            await sqlite_manager.upsert_idea(Idea(title=title, content=full))
+        except Exception:
+            logger.exception("failed to save research report as idea")
+
+    return {"messages": [AIMessage(content=full)], "active_tool": "deep_research"}
+
+
 def route_selector(state: AthenaState) -> RouteTarget:
     """Conditional-edge function: send the run to the router's chosen node."""
     return state.get("route") or "chat_node"
@@ -876,12 +883,13 @@ def build_athena_graph(
     router_llm: Any = None,
     chat_llm: Any = None,
     chroma_manager: Any = None,
+    brain_manager: Any = None,
     sqlite_manager: Any = None,
     task_extractor_llm: Any = None,
-    workout_extractor_llm: Any = None,
     subtask_llm: Any = None,
     session_extractor_llm: Any = None,
     idea_extractor_llm: Any = None,
+    research_llm: Any = None,
     usage_callback: Any = None,
 ) -> Any:
     """Build and compile the Athena-Academic routing graph.
@@ -911,8 +919,14 @@ def build_athena_graph(
     if sqlite_manager is not None:
         if task_extractor_llm is None:
             task_extractor_llm = _default_task_extractor_llm(callbacks)
-        if workout_extractor_llm is None:
-            workout_extractor_llm = _default_workout_extractor_llm(callbacks)
+        if research_llm is None:
+            try:
+                research_llm = _make_llm(
+                    settings.research_model, settings.research_model_max_tokens,
+                    callbacks=callbacks,
+                )
+            except Exception:  # pragma: no cover - missing key/package
+                research_llm = None
         if session_extractor_llm is None:
             session_extractor_llm = _default_session_extractor_llm(callbacks)
         if idea_extractor_llm is None:
@@ -932,7 +946,14 @@ def build_athena_graph(
     builder = StateGraph(AthenaState)
     builder.add_node("router_node", partial(router_node, router_llm=router_llm))
     builder.add_node(
-        "chat_node", partial(chat_node, chat_llm=chat_llm, chroma=chroma_manager, callbacks=callbacks)
+        "chat_node",
+        partial(
+            chat_node,
+            chat_llm=chat_llm,
+            chroma=chroma_manager,
+            brain=brain_manager,
+            callbacks=callbacks,
+        ),
     )
     builder.add_node("pdf_tool_node", pdf_tool_node)
     builder.add_node(
@@ -946,10 +967,10 @@ def build_athena_graph(
         ),
     )
     builder.add_node(
-        "workout_tool_node",
+        "research_node",
         partial(
-            workout_tool_node,
-            workout_extractor_llm=workout_extractor_llm,
+            research_node,
+            research_llm=research_llm,
             sqlite_manager=sqlite_manager,
             callbacks=callbacks,
         ),
@@ -981,7 +1002,7 @@ def build_athena_graph(
             "chat_node": "chat_node",
             "pdf_tool_node": "pdf_tool_node",
             "task_tool_node": "task_tool_node",
-            "workout_tool_node": "workout_tool_node",
+            "research_node": "research_node",
             "session_node": "session_node",
             "idea_extractor_node": "idea_extractor_node",
         },
@@ -989,7 +1010,7 @@ def build_athena_graph(
     builder.add_edge("chat_node", END)
     builder.add_edge("pdf_tool_node", END)
     builder.add_edge("task_tool_node", END)
-    builder.add_edge("workout_tool_node", END)
+    builder.add_edge("research_node", END)
     builder.add_edge("session_node", END)
     builder.add_edge("idea_extractor_node", END)
 
@@ -1003,7 +1024,7 @@ __all__ = [
     "route_selector",
     "router_node",
     "task_tool_node",
-    "workout_tool_node",
+    "research_node",
     "session_node",
     "idea_extractor_node",
 ]

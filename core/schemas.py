@@ -46,13 +46,6 @@ class TaskCategory(str, Enum):
     DAILY = "daily"
 
 
-class WorkoutStatus(str, Enum):
-    """Lifecycle of a workout: a ``planned`` session vs a ``completed`` actual."""
-
-    PLANNED = "planned"
-    COMPLETED = "completed"
-
-
 class AcademicSubtype(str, Enum):
     """Sub-types for academic tasks (daily tasks stay subtype-less)."""
 
@@ -173,58 +166,6 @@ class StudySession(_StrictModel):
     )
 
 
-class PhysicalLoad(_StrictModel):
-    """A physical training session and its objective metrics.
-
-    Workouts are a plain record of what was done; RPE is stored only when the
-    source (Runalyze or the user) actually provides it — no value is fabricated.
-    """
-
-    id: str = Field(default_factory=_new_id, description="UUID4 primary key.")
-    date: date_type = Field(description="Calendar date of the session.")
-    duration_minutes: int = Field(
-        gt=0, description="Session length in minutes; must be positive."
-    )
-    rpe_score: Optional[int] = Field(
-        default=None,
-        ge=1,
-        le=10,
-        description="Rating of Perceived Exertion (Borg CR10); only when provided.",
-    )
-    status: WorkoutStatus = Field(
-        default=WorkoutStatus.COMPLETED,
-        description="planned | completed.",
-    )
-    title: Optional[str] = Field(
-        default=None, description="Optional label, e.g. 'tempo run'."
-    )
-    # TrainingPeaks-style optional metrics — shown only when provided.
-    distance_km: Optional[float] = Field(default=None, ge=0)
-    pace: Optional[str] = Field(
-        default=None, description="Pace per km, e.g. '5:30'."
-    )
-    avg_speed_kmh: Optional[float] = Field(default=None, ge=0)
-    avg_hr: Optional[int] = Field(default=None, ge=0, le=260)
-    note: Optional[str] = Field(
-        default=None, description="Free-form rich-text (HTML) note for the session."
-    )
-
-    @field_validator("note", mode="before")
-    @classmethod
-    def _empty_note_to_none(cls, value: Optional[str]) -> Optional[str]:
-        """Normalize blank notes to NULL so '' and None never diverge in storage.
-
-        The rich-text editor can emit empty markup (``""`` or ``"<p></p>"``);
-        treating those as "no note" keeps reads consistent with writes.
-        """
-        if value is None:
-            return None
-        stripped = value.strip()
-        if stripped in ("", "<p></p>", "<p><br></p>", "<br>"):
-            return None
-        return value
-
-
 class PdfJobStatus(str, Enum):
     """Lifecycle states for a :class:`PdfJob`."""
 
@@ -301,6 +242,27 @@ class Idea(_StrictModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
 
 
+class NotePage(_StrictModel):
+    """A Notion-style note page with optional nesting (page-in-page).
+
+    The body is rich-text HTML written in the enhanced editor. Pages can nest up
+    to three levels (``depth`` 0→1→2); a page at depth 2 cannot have children.
+    Deleting a page recursively deletes its descendants.
+    """
+
+    id: str = Field(default_factory=_new_id)
+    title: str = Field(default="", description="Page title.")
+    content: str = Field(default="", description="Rich-text (HTML) body.")
+    parent_id: Optional[str] = Field(
+        default=None, description="Parent page id; null for a top-level page."
+    )
+    depth: int = Field(
+        default=0, ge=0, le=2, description="Nesting depth (0..2, max 3 levels)."
+    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
+
+
 class AcademicSession(_StrictModel):
     """A session attached to an academic task."""
     id: str = Field(default_factory=_new_id)
@@ -327,14 +289,13 @@ __all__ = [
     "Note",
     "PdfJob",
     "PdfJobStatus",
-    "PhysicalLoad",
     "StudySession",
     "Task",
     "TaskCategory",
     "TaskStatus",
-    "WorkoutStatus",
     "JournalItemType",
     "JournalItem",
     "Journal",
     "Idea",
+    "NotePage",
 ]

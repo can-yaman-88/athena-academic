@@ -1,15 +1,8 @@
 import { useEffect, useState } from "react";
-import {
-  getIdeas,
-  createIdea,
-  deleteIdea,
-  getDailyNotes,
-  type Idea,
-  type DailyNote,
-} from "../api";
+import { getIdeas, createIdea, deleteIdea, type Idea } from "../api";
 import { Card, Button } from "../ui";
 import IdeaEditorModal from "../components/IdeaEditorModal";
-import { Paperclip, Plus, CalendarDays } from "lucide-react";
+import { Paperclip, Plus } from "lucide-react";
 
 function preview(html: string): string {
   const tmp = document.createElement("div");
@@ -17,36 +10,15 @@ function preview(html: string): string {
   return (tmp.textContent || tmp.innerText || "").trim();
 }
 
-function fmtDay(iso: string): string {
-  try {
-    return new Date(iso + "T00:00:00").toLocaleDateString("tr-TR", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  } catch {
-    return iso;
-  }
-}
-
 export default function IdeasPage() {
   const [ideas, setIdeas] = useState<Idea[]>([]);
-  const [dailyNotes, setDailyNotes] = useState<DailyNote[]>([]);
   const [editing, setEditing] = useState<Idea | null>(null);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
 
   const refresh = async () => {
     try {
-      const [ideaList, noteList] = await Promise.all([getIdeas(), getDailyNotes()]);
-      setIdeas(ideaList);
-      // Newest first; backend already orders by date DESC but sort defensively.
-      setDailyNotes(
-        [...noteList]
-          .filter((n) => preview(n.content))
-          .sort((a, b) => b.date.localeCompare(a.date)),
-      );
+      setIdeas(await getIdeas());
       setError("");
     } catch (e) {
       setError(`Veriler yüklenemedi: ${(e as Error).message}`);
@@ -78,35 +50,6 @@ export default function IdeasPage() {
           {error}
         </div>
       )}
-
-      <Card
-        title="Günüm"
-        right={
-          <span className="text-[11px] text-zinc-500">
-            {dailyNotes.length} gün
-          </span>
-        }
-        bodyClassName="flex flex-col gap-2 p-4"
-      >
-        {dailyNotes.length === 0 && (
-          <p className="text-sm text-zinc-500">
-            Henüz günlük not yok. Ana sayfadaki “Günüm” alanından yazmaya başla.
-          </p>
-        )}
-        {dailyNotes.map((note) => (
-          <div
-            key={note.id}
-            className="rounded-xl border border-line bg-elevated/60 p-3 transition-colors hover:border-line-strong"
-          >
-            <div className="flex items-center gap-1.5 text-xs font-medium text-accent-400">
-              <CalendarDays size={12} /> {fmtDay(note.date)}
-            </div>
-            <p className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-sm text-zinc-300">
-              {preview(note.content)}
-            </p>
-          </div>
-        ))}
-      </Card>
 
       <Card
         title="Fikirler"

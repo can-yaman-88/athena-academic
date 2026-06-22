@@ -25,8 +25,8 @@ from core.schemas import Task
 # Valid routing destinations the router may choose. Kept here (not in graph.py)
 # so both the state and the structured-output schema share one definition.
 RouteTarget = Literal[
-    "chat_node", "pdf_tool_node", "task_tool_node", "workout_tool_node",
-    "session_node", "idea_extractor_node"
+    "chat_node", "pdf_tool_node", "task_tool_node",
+    "session_node", "idea_extractor_node", "research_node"
 ]
 
 

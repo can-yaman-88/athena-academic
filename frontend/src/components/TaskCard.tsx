@@ -115,14 +115,33 @@ export default function TaskCard({
                 value={editForm.title}
                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
               />
+              {/* Tarih zorunlu değil; girilirse saat opsiyoneldir (boşsa 23:59). */}
               <input
-                type="datetime-local"
+                type="date"
+                title="Son tarih (opsiyonel)"
                 className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-primary-500"
-                value={editForm.deadline}
-                onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
+                value={editForm.deadline ? editForm.deadline.slice(0, 10) : ""}
+                onChange={(e) => {
+                  const d = e.target.value;
+                  if (!d) return setEditForm({ ...editForm, deadline: "" });
+                  const t = editForm.deadline.slice(11, 16) || "23:59";
+                  setEditForm({ ...editForm, deadline: `${d}T${t}` });
+                }}
               />
               <input
-                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-primary-500"
+                type="time"
+                title="Saat (opsiyonel)"
+                disabled={!editForm.deadline}
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-primary-500 disabled:opacity-50"
+                value={editForm.deadline ? editForm.deadline.slice(11, 16) : ""}
+                onChange={(e) => {
+                  const d = editForm.deadline.slice(0, 10);
+                  if (!d) return;
+                  setEditForm({ ...editForm, deadline: `${d}T${e.target.value || "23:59"}` });
+                }}
+              />
+              <input
+                className="rounded border border-line-strong bg-surface-2 px-2 py-1 text-zinc-100 outline-none focus:border-primary-500 col-span-2"
                 value={editForm.discipline}
                 onChange={(e) => setEditForm({ ...editForm, discipline: e.target.value })}
               />
@@ -168,7 +187,7 @@ export default function TaskCard({
                     run(async () => {
                       await updateTask(task.id, {
                         title: editForm.title,
-                        // An empty datetime-local field means "no deadline" → null.
+                        // No date picked means "no deadline" → null.
                         deadline: editForm.deadline ? editForm.deadline : null,
                         discipline: editForm.discipline,
                         estimated_hours: editForm.estimated_hours,

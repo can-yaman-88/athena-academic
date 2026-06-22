@@ -42,16 +42,15 @@ from core.schemas import (
     Note,
     PdfJob,
     PdfJobStatus,
-    PhysicalLoad,
     StudySession,
     Task,
     TaskCategory,
     TaskStatus,
-    WorkoutStatus,
     Journal,
     JournalItem,
     JournalItemType,
     Idea,
+    NotePage,
 )
 from db.exceptions import DatabaseError, RecordNotFoundError
 
@@ -131,32 +130,17 @@ CREATE TABLE IF NOT EXISTS study_sessions (
 );
 """
 
-_CREATE_PHYSICAL_LOADS = """
-CREATE TABLE IF NOT EXISTS physical_loads (
-    id               TEXT PRIMARY KEY,
-    date             TEXT NOT NULL,
-    duration_minutes INTEGER NOT NULL,
-    rpe_score        INTEGER,
-    status           TEXT NOT NULL DEFAULT 'completed',
-    title            TEXT,
-    distance_km      REAL,
-    pace             TEXT,
-    avg_speed_kmh    REAL,
-    avg_hr           INTEGER,
-    note             TEXT
+_CREATE_BRAIN_FACTS = """
+CREATE TABLE IF NOT EXISTS brain_facts (
+    id         TEXT PRIMARY KEY,
+    text       TEXT NOT NULL,
+    category   TEXT NOT NULL DEFAULT 'fact',
+    source     TEXT NOT NULL DEFAULT 'manual',
+    pinned     INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 """
-
-# (column, ADD COLUMN clause) for migrating pre-v2 physical_loads tables.
-_LOAD_COLUMN_MIGRATIONS = [
-    ("status", "status TEXT NOT NULL DEFAULT 'completed'"),
-    ("title", "title TEXT"),
-    ("distance_km", "distance_km REAL"),
-    ("pace", "pace TEXT"),
-    ("avg_speed_kmh", "avg_speed_kmh REAL"),
-    ("avg_hr", "avg_hr INTEGER"),
-    ("note", "note TEXT"),
-]
 
 _CREATE_CHAT_MATERIALS = """
 CREATE TABLE IF NOT EXISTS chat_materials (
@@ -225,6 +209,22 @@ CREATE TABLE IF NOT EXISTS ideas (
 
 _CREATE_IDEAS_INDEX = (
     "CREATE INDEX IF NOT EXISTS idx_ideas_updated ON ideas (updated_at DESC);"
+)
+
+_CREATE_NOTES = """
+CREATE TABLE IF NOT EXISTS notes (
+    id         TEXT PRIMARY KEY,
+    title      TEXT NOT NULL DEFAULT '',
+    content    TEXT NOT NULL DEFAULT '',
+    parent_id  TEXT,
+    depth      INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+"""
+
+_CREATE_NOTES_PARENT_INDEX = (
+    "CREATE INDEX IF NOT EXISTS idx_notes_parent ON notes (parent_id);"
 )
 
 
@@ -297,7 +297,7 @@ class SQLiteManager:
         await conn.execute(_CREATE_ACADEMIC_SESSIONS)
         await conn.execute(_CREATE_DAILY_NOTES)
         await conn.execute(_CREATE_STUDY_SESSIONS)
-        await conn.execute(_CREATE_PHYSICAL_LOADS)
+        await conn.execute(_CREATE_BRAIN_FACTS)
         await conn.execute(_CREATE_CHAT_MATERIALS)
         await conn.execute(_CREATE_PDF_JOBS)
         await conn.execute(_CREATE_JOURNALS)
@@ -306,6 +306,8 @@ class SQLiteManager:
         await conn.execute(_CREATE_JOURNAL_ITEMS_INDEX)
         await conn.execute(_CREATE_IDEAS)
         await conn.execute(_CREATE_IDEAS_INDEX)
+        await conn.execute(_CREATE_NOTES)
+        await conn.execute(_CREATE_NOTES_PARENT_INDEX)
         # Cognitive-load scoring was removed; drop its legacy table if present.
         await conn.execute("DROP TABLE IF EXISTS load_adjustments")
         await conn.commit()
@@ -324,7 +326,6 @@ class SQLiteManager:
                 added = True
         if added:
             await conn.commit()
-        await self._migrate_load_columns()
 
     async def _migrate_daily_notes(self) -> None:
         """Add any v2 daily_notes columns missing from a pre-existing DB."""
@@ -340,61 +341,6 @@ class SQLiteManager:
             added = True
         if added:
             await conn.commit()
-
-    async def _migrate_load_columns(self) -> None:
-        """Add any v2 physical_loads columns missing from a pre-existing DB."""
-        conn = self._require_conn()
-        async with conn.execute("PRAGMA table_info(physical_loads)") as cursor:
-            existing = {row[1] for row in await cursor.fetchall()}
-        added = False
-        for column, clause in _LOAD_COLUMN_MIGRATIONS:
-            if column not in existing:
-                await conn.execute(f"ALTER TABLE physical_loads ADD COLUMN {clause}")
-                added = True
-        if added:
-            await conn.commit()
-        await self._migrate_physical_loads_v3()
-
-    async def _migrate_physical_loads_v3(self) -> None:
-        """Drop the legacy ``calculated_load`` column and relax ``rpe_score``.
-
-        Cognitive-load scoring was removed, so ``calculated_load`` is gone and
-        ``rpe_score`` is now optional (stored only when the source provides it).
-        SQLite can't relax a NOT NULL in place, so when the old column is still
-        present we rebuild the table once, preserving every row.
-        """
-        conn = self._require_conn()
-        async with conn.execute("PRAGMA table_info(physical_loads)") as cursor:
-            cols = {row[1] for row in await cursor.fetchall()}
-        if "calculated_load" not in cols:
-            return  # already migrated
-        await conn.executescript(
-            """
-            BEGIN;
-            CREATE TABLE physical_loads_new (
-                id               TEXT PRIMARY KEY,
-                date             TEXT NOT NULL,
-                duration_minutes INTEGER NOT NULL,
-                rpe_score        INTEGER,
-                status           TEXT NOT NULL DEFAULT 'completed',
-                title            TEXT,
-                distance_km      REAL,
-                pace             TEXT,
-                avg_speed_kmh    REAL,
-                avg_hr           INTEGER,
-                note             TEXT
-            );
-            INSERT INTO physical_loads_new
-                (id, date, duration_minutes, rpe_score, status, title,
-                 distance_km, pace, avg_speed_kmh, avg_hr, note)
-            SELECT id, date, duration_minutes, rpe_score, status, title,
-                   distance_km, pace, avg_speed_kmh, avg_hr, note
-            FROM physical_loads;
-            DROP TABLE physical_loads;
-            ALTER TABLE physical_loads_new RENAME TO physical_loads;
-            COMMIT;
-            """
-        )
 
     async def close(self) -> None:
         """Close the underlying connection if open."""
@@ -529,24 +475,6 @@ class SQLiteManager:
             topic=row["topic"],
             duration_minutes=row["duration_minutes"],
             retention_score=row["retention_score"],
-        )
-
-    @staticmethod
-    def _row_to_physical_load(row: aiosqlite.Row) -> PhysicalLoad:
-        keys = set(row.keys())
-        status = row["status"] if "status" in keys and row["status"] else "completed"
-        return PhysicalLoad(
-            id=row["id"],
-            date=date_type.fromisoformat(row["date"]),
-            duration_minutes=row["duration_minutes"],
-            rpe_score=row["rpe_score"],
-            status=WorkoutStatus(status),
-            title=row["title"] if "title" in keys else None,
-            distance_km=row["distance_km"] if "distance_km" in keys else None,
-            pace=row["pace"] if "pace" in keys else None,
-            avg_speed_kmh=row["avg_speed_kmh"] if "avg_speed_kmh" in keys else None,
-            avg_hr=row["avg_hr"] if "avg_hr" in keys else None,
-            note=row["note"] if "note" in keys else None,
         )
 
     # ------------------------------------------------------------------ #
@@ -706,32 +634,8 @@ class SQLiteManager:
         await self._write("DELETE FROM study_sessions WHERE id = ?", (session_id,))
 
     # ------------------------------------------------------------------ #
-    # Physical loads
+    # Academic sessions
     # ------------------------------------------------------------------ #
-    async def create_physical_load(self, load: PhysicalLoad) -> PhysicalLoad:
-        await self._write(
-            """
-            INSERT OR REPLACE INTO physical_loads
-                (id, date, duration_minutes, rpe_score,
-                 status, title, distance_km, pace, avg_speed_kmh, avg_hr, note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                load.id,
-                load.date.isoformat(),
-                load.duration_minutes,
-                load.rpe_score,
-                load.status.value,
-                load.title,
-                load.distance_km,
-                load.pace,
-                load.avg_speed_kmh,
-                load.avg_hr,
-                load.note,
-            ),
-        )
-        return load
-
     async def create_academic_session(self, session: AcademicSession) -> None:
         """Insert a new academic session."""
         conn = self._require_conn()
@@ -752,24 +656,6 @@ class SQLiteManager:
             ),
         )
         await conn.commit()
-    async def get_physical_load(self, load_id: str) -> PhysicalLoad:
-        row = await self._fetchone(
-            "SELECT * FROM physical_loads WHERE id = ?", (load_id,)
-        )
-        if row is None:
-            raise RecordNotFoundError(f"PhysicalLoad not found: {load_id}")
-        return self._row_to_physical_load(row)
-
-    async def update_physical_load(self, load: PhysicalLoad) -> PhysicalLoad:
-        """Replace an existing physical load (idempotent upsert); raises if absent."""
-        await self.get_physical_load(load.id)  # existence check
-        return await self.create_physical_load(load)
-
-    async def list_physical_loads(self) -> list[PhysicalLoad]:
-        rows = await self._fetchall(
-            "SELECT * FROM physical_loads ORDER BY date DESC", ()
-        )
-        return [self._row_to_physical_load(row) for row in rows]
 
     # ------------------------------------------------------------------ #
     # Chat-uploaded materials (PDF->MD / image->MD attachments)
@@ -801,10 +687,6 @@ class SQLiteManager:
             "source_path": row["source_path"],
             "markdown": row["markdown"] or "",
         }
-
-    async def delete_physical_load(self, load_id: str) -> None:
-        await self.get_physical_load(load_id)  # existence check
-        await self._write("DELETE FROM physical_loads WHERE id = ?", (load_id,))
 
     # ------------------------------------------------------------------ #
     # PDF jobs
@@ -988,6 +870,134 @@ class SQLiteManager:
 
     async def delete_idea(self, idea_id: str) -> None:
         await self._write("DELETE FROM ideas WHERE id = ?", (idea_id,))
+
+    # ------------------------------------------------------------------ #
+    # Notes (Notion-style nested pages; rich-text HTML, page-in-page ≤ 3)
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def _row_to_note(row: aiosqlite.Row) -> NotePage:
+        return NotePage(
+            id=row["id"],
+            title=row["title"],
+            content=row["content"],
+            parent_id=row["parent_id"],
+            depth=row["depth"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    async def list_notes(self) -> list[NotePage]:
+        rows = await self._fetchall(
+            "SELECT * FROM notes ORDER BY title COLLATE NOCASE ASC", ()
+        )
+        return [self._row_to_note(row) for row in rows]
+
+    async def list_child_notes(self, parent_id: Optional[str]) -> list[NotePage]:
+        if parent_id is None:
+            rows = await self._fetchall(
+                "SELECT * FROM notes WHERE parent_id IS NULL ORDER BY title COLLATE NOCASE ASC",
+                (),
+            )
+        else:
+            rows = await self._fetchall(
+                "SELECT * FROM notes WHERE parent_id = ? ORDER BY title COLLATE NOCASE ASC",
+                (parent_id,),
+            )
+        return [self._row_to_note(row) for row in rows]
+
+    async def get_note(self, note_id: str) -> NotePage:
+        row = await self._fetchone("SELECT * FROM notes WHERE id = ?", (note_id,))
+        if row is None:
+            raise RecordNotFoundError(f"Note not found: {note_id}")
+        return self._row_to_note(row)
+
+    async def upsert_note(self, note: NotePage) -> NotePage:
+        await self._write(
+            """
+            INSERT OR REPLACE INTO notes
+                (id, title, content, parent_id, depth, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                note.id,
+                note.title,
+                note.content,
+                note.parent_id,
+                note.depth,
+                note.created_at.isoformat(),
+                note.updated_at.isoformat(),
+            ),
+        )
+        return note
+
+    async def delete_note(self, note_id: str) -> None:
+        """Delete a note and all of its descendants (recursive)."""
+        children = await self._fetchall(
+            "SELECT id FROM notes WHERE parent_id = ?", (note_id,)
+        )
+        for child in children:
+            await self.delete_note(child["id"])
+        await self._write("DELETE FROM notes WHERE id = ?", (note_id,))
+
+    # ------------------------------------------------------------------ #
+    # Brain facts (long-term memory; embeddings mirrored in ChromaDB)
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def _row_to_brain_fact(row: aiosqlite.Row) -> dict:
+        return {
+            "id": row["id"],
+            "text": row["text"],
+            "category": row["category"],
+            "source": row["source"],
+            "pinned": bool(row["pinned"]),
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+
+    async def list_brain_facts(self) -> list[dict]:
+        rows = await self._fetchall(
+            "SELECT * FROM brain_facts ORDER BY pinned DESC, updated_at DESC", ()
+        )
+        return [self._row_to_brain_fact(row) for row in rows]
+
+    async def get_brain_fact(self, fact_id: str) -> Optional[dict]:
+        row = await self._fetchone(
+            "SELECT * FROM brain_facts WHERE id = ?", (fact_id,)
+        )
+        return self._row_to_brain_fact(row) if row is not None else None
+
+    async def upsert_brain_fact(self, fact: dict) -> dict:
+        now = datetime.now().isoformat()
+        record = {
+            "id": fact["id"],
+            "text": fact["text"],
+            "category": fact.get("category", "fact"),
+            "source": fact.get("source", "manual"),
+            "pinned": 1 if fact.get("pinned") else 0,
+            "created_at": fact.get("created_at") or now,
+            "updated_at": now,
+        }
+        await self._write(
+            """
+            INSERT OR REPLACE INTO brain_facts
+                (id, text, category, source, pinned, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                record["id"],
+                record["text"],
+                record["category"],
+                record["source"],
+                record["pinned"],
+                record["created_at"],
+                record["updated_at"],
+            ),
+        )
+        record["pinned"] = bool(record["pinned"])
+        return record
+
+    async def delete_brain_fact(self, fact_id: str) -> None:
+        await self._write("DELETE FROM brain_facts WHERE id = ?", (fact_id,))
 
     # ------------------------------------------------------------------ #
     # Daily Notes

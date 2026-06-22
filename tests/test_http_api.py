@@ -92,19 +92,25 @@ def test_idea_blank_create_then_update(client):
     assert r.json()["title"] == "Fikir"
 
 
-def test_workout_create_and_note_save(client):
-    r = client.post("/workouts", json={"duration_minutes": 45, "title": "tempo",
-                                       "distance_km": 8.0})
+def test_brain_fact_crud(client):
+    # list starts empty (or at least returns the envelope)
+    r = client.get("/brain")
     assert r.status_code == 200, r.text
-    wid = r.json()["physical_load"]["id"]
-    # save a note (the "Failed to fetch" path)
-    r = client.patch(f"/workouts/{wid}", json={"note": "<p>iyi geçti</p>"})
+    assert "facts" in r.json()
+    # create a fact manually
+    r = client.post("/brain", json={"text": "Kullanıcı bilgisayar mühendisliği okuyor"})
+    assert r.status_code == 200, r.text
+    fid = r.json()["fact"]["id"]
+    # it now appears in the list
+    r = client.get("/brain")
+    assert any(f["id"] == fid for f in r.json()["facts"])
+    # update + delete
+    r = client.patch(f"/brain/{fid}", json={"pinned": True})
+    assert r.status_code == 200 and r.json()["fact"]["pinned"] is True
+    r = client.delete(f"/brain/{fid}")
     assert r.status_code == 200
-    assert r.json()["note"] == "<p>iyi geçti</p>"
-    # clearing the note normalizes to null
-    r = client.patch(f"/workouts/{wid}", json={"note": ""})
-    assert r.status_code == 200
-    assert r.json()["note"] is None
+    r = client.get("/brain")
+    assert not any(f["id"] == fid for f in r.json()["facts"])
 
 
 def test_daily_note_upsert(client):

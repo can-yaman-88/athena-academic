@@ -10,14 +10,12 @@ from core.commands import parse_command
 @pytest.mark.parametrize(
     "text, expected_name, expected_route",
     [
-        ("/gorev rapor yaz", "gorev", "task_tool_node"),
         ("/agorev Mat analiz", "agorev", "task_tool_node"),
-        ("/altgorev(3) sunum", "altgorev", "task_tool_node"),
         ("/altakademik(2) proje", "altakademik", "task_tool_node"),
         ("/seans 2 saat integral", "seans", "session_node"),
         ("/plan Final çalışması", "plan", "task_tool_node"),
         ("/aralik Bölüm 3", "aralik", "task_tool_node"),
-        ("/antrenman 45dk koşu", "antrenman", "workout_tool_node"),
+        ("/arastir kuantum bilgisayarlar", "arastir", "research_node"),
         ("/yardim", "yardim", "chat_node"),
     ],
 )

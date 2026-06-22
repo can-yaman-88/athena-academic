@@ -1,7 +1,7 @@
 """FastAPI application for Athena-Academic.
 
 Exposes the LangGraph agent (streaming chat), a PDF upload endpoint that runs the
-in-process PDF->LaTeX engine in the background, task & workout CRUD, a PDF-job
+in-process PDF->LaTeX engine in the background, task & idea CRUD, a PDF-job
 history with artifact download, a two-category API cost meter, and a live log
 stream. All shared components (agent graph, SQLite, ChromaDB, usage tracker, log
 bus) are initialized once in the application lifespan and shared via ``app.state``.
@@ -29,6 +29,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field, field_validator
 
@@ -41,13 +42,13 @@ from core.schemas import (
     Idea,
     Material,
     Note,
-    PhysicalLoad,
+    NotePage,
     Task,
     TaskCategory,
     TaskStatus,
-    WorkoutStatus,
 )
 from core.usage_callback import AgentUsageCallback
+from db.brain_manager import BrainManager
 from db.chroma_manager import ChromaManager
 from db.exceptions import RecordNotFoundError
 from db.sqlite_manager import SQLiteManager
@@ -92,6 +93,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.sqlite = sqlite
     app.state.chroma = chroma
 
+    # Brain (long-term memory): canonical rows in SQLite, embeddings in a
+    # dedicated Chroma collection. The extractor LLM is built only when a key is
+    # available (manual extraction is a no-op otherwise).
+    brain_extractor_llm = None
+    if os.environ.get(settings.openrouter_api_key_env):
+        try:
+            from core.graph import _make_llm
+
+            brain_extractor_llm = _make_llm(
+                settings.brain_model, settings.brain_model_max_tokens,
+                callbacks=[AgentUsageCallback(usage)],
+            )
+        except Exception:  # pragma: no cover - defensive
+            logger.exception("failed to build brain extractor LLM")
+    brain = BrainManager(sqlite, extractor_llm=brain_extractor_llm)
+    await asyncio.to_thread(brain.initialize)
+    app.state.brain = brain
+
     # Build the agent graph only when an OpenRouter key is available; otherwise
     # /chat reports 503 instead of crashing the whole app at startup.
     app.state.graph = None
@@ -99,6 +118,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
             app.state.graph = build_athena_graph(
                 chroma_manager=chroma,
+                brain_manager=brain,
                 sqlite_manager=sqlite,
                 usage_callback=AgentUsageCallback(usage),
             )
@@ -111,28 +131,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             settings.openrouter_api_key_env,
         )
 
-    # Background Runalyze auto-sync. The loop re-reads the token each cycle, so a
-    # token added later (without a restart) still activates it.
-    if _read_runalyze_token():
-        logger.info(
-            "Runalyze auto-sync enabled (every %d min)",
-            settings.runalyze_sync_interval_min,
-        )
-    else:
-        logger.info(
-            "%s not set; Runalyze auto-sync idle until a token is provided",
-            settings.runalyze_token_env,
-        )
-    app.state.runalyze_task = asyncio.create_task(_runalyze_sync_loop(app))
-
     try:
         yield
     finally:
-        app.state.runalyze_task.cancel()
-        try:
-            await app.state.runalyze_task
-        except asyncio.CancelledError:
-            pass
         await sqlite.close()
 
 
@@ -146,6 +147,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serve editor-uploaded inline assets (images/files) by URL so the rich-text
+# editor can embed them: <img src="${API_URL}/uploads/files/<name>">.
+settings.uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount(
+    "/uploads/files",
+    StaticFiles(directory=str(settings.uploads_dir)),
+    name="uploads",
+)
+
 
 # --------------------------------------------------------------------------- #
 # Request models
@@ -153,7 +163,7 @@ app.add_middleware(
 class Mention(BaseModel):
     """A reference the user explicitly picked in the chat box (@ or #).
 
-    ``type`` is one of: task, subtask, workout, idea, model, tag. ``id`` is the
+    ``type`` is one of: task, subtask, idea, model, tag. ``id`` is the
     object id (or the tag/model name). The backend resolves each to its real
     content so the model receives the actual referenced material, not just a label.
     """
@@ -251,30 +261,24 @@ class MaterialCreateRequest(BaseModel):
     source: str = Field(min_length=1)
 
 
-class WorkoutRequest(BaseModel):
-    duration_minutes: int = Field(gt=0)
-    rpe_score: Optional[int] = Field(default=None, ge=1, le=10)
-    date: Optional[date] = None
-    status: WorkoutStatus = WorkoutStatus.COMPLETED
-    title: Optional[str] = None
-    distance_km: Optional[float] = Field(default=None, ge=0)
-    pace: Optional[str] = None
-    avg_speed_kmh: Optional[float] = Field(default=None, ge=0)
-    avg_hr: Optional[int] = Field(default=None, ge=0, le=260)
-    note: Optional[str] = None
+class BrainFactRequest(BaseModel):
+    """Create a long-term memory fact manually."""
+
+    text: str = Field(min_length=1)
+    category: str = "fact"
+    pinned: bool = False
 
 
-class WorkoutUpdateRequest(BaseModel):
-    duration_minutes: Optional[int] = Field(default=None, gt=0)
-    rpe_score: Optional[int] = Field(default=None, ge=1, le=10)
-    date: Optional[date] = None
-    status: Optional[WorkoutStatus] = None
-    title: Optional[str] = None
-    distance_km: Optional[float] = Field(default=None, ge=0)
-    pace: Optional[str] = None
-    avg_speed_kmh: Optional[float] = Field(default=None, ge=0)
-    avg_hr: Optional[int] = Field(default=None, ge=0, le=260)
-    note: Optional[str] = None
+class BrainFactUpdateRequest(BaseModel):
+    text: Optional[str] = None
+    category: Optional[str] = None
+    pinned: Optional[bool] = None
+
+
+class BrainExtractRequest(BaseModel):
+    """Recent chat lines to mine for durable facts (on-demand extraction)."""
+
+    history: list[dict] = Field(default_factory=list)
 
 
 def _sse(payload: dict[str, Any]) -> str:
@@ -329,7 +333,6 @@ async def _resolve_message_mentions(message: str, db: SQLiteManager) -> str:
     Handles:
     - @model-name -> model slug note
     - @task-title / @task-id / quoted task title -> full task dump (notes, subtasks)
-    - @workout-title / @workout-id -> workout details
     - #tag -> short note that tag usage means task/journal context
     """
     import re
@@ -371,7 +374,7 @@ async def _resolve_message_mentions(message: str, db: SQLiteManager) -> str:
 
         parts = [
             f"Görev: {target.title}",
-            f"Son tarih: {target.deadline.isoformat()}",
+            f"Son tarih: {target.deadline.isoformat() if target.deadline else 'tarihsiz'}",
             f"Alan: {target.discipline}",
             f"Tahmini süre: {target.estimated_hours}h",
             f"Kategori: {target.category.value}",
@@ -386,7 +389,10 @@ async def _resolve_message_mentions(message: str, db: SQLiteManager) -> str:
         if subtasks:
             parts.append(
                 "Alt görevler:\n"
-                + "\n".join(f"- {s.title} ({s.deadline.isoformat()})" for s in subtasks)
+                + "\n".join(
+                    f"- {s.title} ({s.deadline.isoformat() if s.deadline else 'tarihsiz'})"
+                    for s in subtasks
+                )
             )
         return "\n".join(parts)
 
@@ -404,49 +410,6 @@ async def _resolve_message_mentions(message: str, db: SQLiteManager) -> str:
         for m in task_pattern.finditer(text):
             result.append(text[last : m.start()])
             result.append(await replace_task(m))
-            last = m.end()
-        result.append(text[last:])
-        return "".join(result)
-
-    # Workouts: similar to tasks but simpler.
-    async def workout_dump(token: str) -> str:
-        token = token.strip().strip('"').strip("'")
-        try:
-            workouts = await db.list_physical_loads()
-        except Exception:
-            return "[antrenman bulunamadı]"
-        target = next(
-            (w for w in workouts if w.id == token or (w.title and token.lower() in w.title.lower())),
-            None,
-        )
-        if target is None:
-            return "[antrenman bulunamadı]"
-        return (
-            f"Antrenman: {target.title or target.date}\n"
-            f"Tarih: {target.date}\n"
-            f"Süre: {target.duration_minutes} dk\n"
-            f"Durum: {target.status.value}"
-            + (f"\nMesafe: {target.distance_km} km" if target.distance_km else "")
-            + (f"\nTempo: {target.pace}/km" if target.pace else "")
-            + (f"\nRPE: {target.rpe_score}" if target.rpe_score else "")
-        )
-
-    workout_pattern = re.compile(r'@"([^"]+)"|@([^\s]+)')
-
-    async def resolve_workouts(text: str) -> str:
-        result = []
-        last = 0
-        for m in workout_pattern.finditer(text):
-            token = m.group(1) if m.group(1) is not None else m.group(2)
-            # Skip tokens that were already replaced as models above.
-            # Model replacements all start with '[Model:'.
-            if text[m.start() : m.end()].startswith("@[") and "[Model:" in text[m.start() : m.end()]:
-                result.append(text[last:m.start()])
-                result.append("[Model zaten çözümlendi]")
-                last = m.end()
-                continue
-            result.append(text[last:m.start()])
-            result.append(await workout_dump(token))
             last = m.end()
         result.append(text[last:])
         return "".join(result)
@@ -470,7 +433,7 @@ def _task_context_block(target: Task, all_tasks: list[Task]) -> str:
 
     parts = [
         f"Görev: {target.title}",
-        f"Son tarih: {target.deadline.isoformat()}",
+        f"Son tarih: {target.deadline.isoformat() if target.deadline else 'tarihsiz'}",
         f"Alan: {target.discipline}",
         f"Tahmini süre: {target.estimated_hours}h",
         f"Kategori: {target.category.value}",
@@ -500,41 +463,19 @@ def _task_context_block(target: Task, all_tasks: list[Task]) -> str:
     return "\n".join(parts)
 
 
-def _workout_context_block(target: PhysicalLoad) -> str:
-    lines = [
-        f"Antrenman: {target.title or target.date}",
-        f"Tarih: {target.date}",
-        f"Süre: {target.duration_minutes} dk",
-        f"Durum: {target.status.value}",
-    ]
-    if target.distance_km:
-        lines.append(f"Mesafe: {target.distance_km} km")
-    if target.pace:
-        lines.append(f"Tempo: {target.pace}/km")
-    if target.avg_hr:
-        lines.append(f"Ort. nabız: {target.avg_hr} bpm")
-    if target.rpe_score:
-        lines.append(f"RPE: {target.rpe_score}")
-    if target.note:
-        import re as _re
-        lines.append("Not: " + _re.sub(r"<[^>]+>", " ", target.note).strip())
-    return "\n".join(lines)
-
-
 async def _resolve_structured_mentions(
     mentions: list["Mention"], db: SQLiteManager
 ) -> str:
     """Turn explicitly-picked @/# mentions into a real-content context block.
 
     Unlike the regex text resolver this is unambiguous: each mention carries the
-    object id and type the user actually selected, so multi-word titles, subtasks,
-    workouts and ideas all resolve to their full content.
+    object id and type the user actually selected, so multi-word titles, subtasks
+    and ideas all resolve to their full content.
     """
     if not mentions:
         return ""
 
     all_tasks: Optional[list[Task]] = None
-    workouts: Optional[list[PhysicalLoad]] = None
     blocks: list[str] = []
 
     for m in mentions:
@@ -546,12 +487,6 @@ async def _resolve_structured_mentions(
                 target = next((t for t in all_tasks if t.id == m.id), None)
                 if target:
                     blocks.append(_task_context_block(target, all_tasks))
-            elif kind in ("workout", "antrenman"):
-                if workouts is None:
-                    workouts = await db.list_physical_loads()
-                target = next((w for w in workouts if w.id == m.id), None)
-                if target:
-                    blocks.append(_workout_context_block(target))
             elif kind in ("idea", "fikir"):
                 get_idea = getattr(db, "get_idea", None)
                 if get_idea is not None:
@@ -632,21 +567,51 @@ async def chat(request: Request, body: ChatRequest) -> StreamingResponse:
             "attachments": attachments,
             "model_override": override_slug,
         }
+        # Multi-mode streaming:
+        #   - "messages": token-level deltas (we forward only chat_node tokens so
+        #     tool-node extractor JSON never leaks into the chat bubble);
+        #   - "custom":   live Deep Research progress (research_node stream writer);
+        #   - "updates":  final per-node messages + active tool for the tool nodes.
+        streamed_delta = False
         try:
-            async for update in graph.astream(state, stream_mode="updates"):
-                for node, partial in update.items():
-                    if not isinstance(partial, dict):
+            async for mode, chunk in graph.astream(
+                state, stream_mode=["messages", "custom", "updates"]
+            ):
+                if mode == "messages":
+                    msg, meta = chunk
+                    if (meta or {}).get("langgraph_node") != "chat_node":
                         continue
-                    for msg in partial.get("messages", []) or []:
-                        content = getattr(msg, "content", "")
-                        if content:
+                    text = getattr(msg, "content", "")
+                    if isinstance(text, list):
+                        text = "".join(
+                            b.get("text", "") if isinstance(b, dict) else str(b)
+                            for b in text
+                        )
+                    if text:
+                        streamed_delta = True
+                        yield _sse({"type": "delta", "content": text})
+                elif mode == "custom":
+                    if isinstance(chunk, dict) and chunk.get("type") == "research_progress":
+                        yield _sse(chunk)
+                elif mode == "updates":
+                    for node, partial in chunk.items():
+                        if not isinstance(partial, dict):
+                            continue
+                        tool = partial.get("active_tool")
+                        if tool:
+                            yield _sse({"type": "tool_start", "tool": tool})
+                        for msg in partial.get("messages", []) or []:
+                            content = getattr(msg, "content", "")
+                            if not content:
+                                continue
+                            # chat_node text already arrived as deltas; only emit
+                            # the whole message when nothing streamed (e.g. the
+                            # deterministic /yardim reply).
+                            if node == "chat_node" and streamed_delta:
+                                continue
                             yield _sse(
                                 {"type": "message", "node": node, "content": content}
                             )
-                    if partial.get("active_tool"):
-                        yield _sse(
-                            {"type": "tool", "active_tool": partial["active_tool"]}
-                        )
             yield _sse({"type": "done"})
         except Exception as exc:  # pragma: no cover - surfaced to client
             logger.exception("chat stream failed")
@@ -1070,301 +1035,54 @@ async def analyze_all_notes(request: Request) -> dict[str, Any]:
 
 
 # --------------------------------------------------------------------------- #
-# Workout (PhysicalLoad) CRUD
+# Brain (long-term memory) CRUD + on-demand extraction
 # --------------------------------------------------------------------------- #
-@app.get("/workouts")
-async def list_workouts(request: Request) -> dict[str, Any]:
-    db: SQLiteManager = request.app.state.sqlite
-    loads = await db.list_physical_loads()
-    return {"workouts": [load.model_dump(mode="json") for load in loads]}
+@app.get("/brain")
+async def list_brain(request: Request) -> dict[str, Any]:
+    brain: BrainManager = request.app.state.brain
+    return {"facts": await brain.list_facts()}
 
 
-@app.post("/workouts")
-async def create_workout(request: Request, body: WorkoutRequest) -> dict[str, Any]:
-    """Record a workout with its (optional) metrics."""
-    db: SQLiteManager = request.app.state.sqlite
-    load = PhysicalLoad(
-        date=body.date or date.today(),
-        duration_minutes=body.duration_minutes,
-        rpe_score=body.rpe_score,
-        status=body.status,
-        title=body.title,
-        distance_km=body.distance_km,
-        pace=body.pace,
-        avg_speed_kmh=body.avg_speed_kmh,
-        avg_hr=body.avg_hr,
-        note=body.note,
+@app.post("/brain")
+async def create_brain_fact(request: Request, body: BrainFactRequest) -> dict[str, Any]:
+    brain: BrainManager = request.app.state.brain
+    fact = await brain.add_fact(
+        body.text, category=body.category, source="manual", pinned=body.pinned
     )
-    await db.create_physical_load(load)
-    return {"physical_load": load.model_dump(mode="json")}
+    return {"fact": fact}
 
 
-@app.post("/workouts/{load_id}/complete")
-async def complete_workout(request: Request, load_id: str) -> dict[str, Any]:
-    """Mark a planned workout as completed (it becomes a recorded actual)."""
-    db: SQLiteManager = request.app.state.sqlite
-    try:
-        load = await db.get_physical_load(load_id)
-    except RecordNotFoundError:
-        raise HTTPException(status_code=404, detail="Workout not found")
-    load.status = WorkoutStatus.COMPLETED
-    await db.update_physical_load(load)
-    return load.model_dump(mode="json")
-
-
-@app.post("/workouts/upload")
-async def upload_workouts(
-    request: Request, file: UploadFile = File(...)
+@app.patch("/brain/{fact_id}")
+async def update_brain_fact(
+    request: Request, fact_id: str, body: BrainFactUpdateRequest
 ) -> dict[str, Any]:
-    """Import workout data (JSON/CSV/.FIT) as completed (actual) sessions."""
-    from tools.workout_import import parse_workouts
-
-    db: SQLiteManager = request.app.state.sqlite
-    filename = Path(file.filename or "workouts").name
-    settings.uploads_dir.mkdir(parents=True, exist_ok=True)
-    dest = settings.uploads_dir / f"{uuid4().hex}_{filename}"
-    content = await file.read()
-    await asyncio.to_thread(dest.write_bytes, content)
-
-    # Files with an unknown/missing extension but JSON content (e.g. uploads sent
-    # as application/octet-stream) are still parsed as JSON rather than rejected.
-    if dest.suffix.lower() not in (".json", ".csv", ".fit"):
-        if content.lstrip()[:1] in (b"[", b"{"):
-            dest = dest.with_suffix(dest.suffix + ".json")
-            await asyncio.to_thread(dest.write_bytes, content)
-
-    try:
-        records = await asyncio.to_thread(parse_workouts, dest)
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("workout import failed")
-        raise HTTPException(status_code=400, detail=f"Could not parse file: {exc}")
-
-    created = []
-    for rec in records:
-        load = PhysicalLoad(
-            date=date.fromisoformat(rec["date"]),
-            duration_minutes=rec["duration_minutes"],
-            rpe_score=rec.get("rpe_score"),
-            status=WorkoutStatus.COMPLETED,
-            title=rec.get("title"),
-            distance_km=rec.get("distance_km"),
-            pace=rec.get("pace"),
-            avg_speed_kmh=rec.get("avg_speed_kmh"),
-            avg_hr=rec.get("avg_hr"),
-        )
-        await db.create_physical_load(load)
-        created.append(load.model_dump(mode="json"))
-    return {"imported": len(created), "workouts": created}
-
-
-def _read_runalyze_token() -> Optional[str]:
-    """Read the Runalyze personal-API token from the env, falling back to .env.
-
-    In Docker the token arrives via the ``environment:`` block; the ``.env``
-    fallback covers bare ``uvicorn`` runs where python-dotenv isn't installed.
-    """
-    token = os.environ.get(settings.runalyze_token_env)
-    if token and token.strip():
-        return token.strip()
-    env_file = settings.base_dir / ".env"
-    if env_file.exists():
-        prefix = f"{settings.runalyze_token_env}="
-        for line in env_file.read_text(encoding="utf-8").splitlines():
-            if line.startswith(prefix):
-                return line.split("=", 1)[1].strip().strip('"').strip("'") or None
-    return None
-
-
-def _runalyze_activity_to_load(act: dict[str, Any]) -> Optional[PhysicalLoad]:
-    """Map one Runalyze activity dict to a completed ``PhysicalLoad`` (or None).
-
-    The Runalyze Personal API returns activities as a flat JSON list. Relevant
-    fields: ``date_time`` (ISO; NOT ``time``), ``duration``/``elapsed_time``
-    (seconds), ``distance`` (km), ``hr_avg``, ``rpe`` (0 when unset), ``trimp``,
-    ``title``, and ``sport``/``type`` objects each carrying a ``name``.
-    """
-    act_id = act.get("id")
-    date_raw = act.get("date_time") or act.get("time")
-    if not act_id or not date_raw:
-        return None
-    try:
-        day = date.fromisoformat(str(date_raw).split("T")[0])
-    except ValueError:
-        return None
-
-    seconds = act.get("duration") or act.get("elapsed_time") or 0
-    duration_min = max(1, round(seconds / 60))
-
-    # RPE is stored only when Runalyze actually reports it — no fabricated
-    # difficulty (cognitive-load scoring was removed). Clamp a real value to 1-10.
-    raw_rpe = act.get("rpe")
-    rpe = max(1, min(10, int(raw_rpe))) if raw_rpe else None
-
-    sport = act.get("sport") if isinstance(act.get("sport"), dict) else {}
-    typ = act.get("type") if isinstance(act.get("type"), dict) else {}
-    title = act.get("title") or sport.get("name") or typ.get("name") or "Runalyze"
-
-    distance = act.get("distance")
-    distance_km = float(distance) if distance else None
-    hr_avg = act.get("hr_avg")
-    avg_hr = int(hr_avg) if hr_avg else None
-
-    pace: Optional[str] = None
-    avg_speed_kmh: Optional[float] = None
-    minutes = seconds / 60 if seconds else float(duration_min)
-    if distance_km and distance_km > 0 and minutes > 0:
-        avg_speed_kmh = round(distance_km / (minutes / 60), 2)
-        pace_min = minutes / distance_km
-        m = int(pace_min)
-        s = int(round((pace_min - m) * 60))
-        if s == 60:
-            m, s = m + 1, 0
-        pace = f"{m}:{s:02d}"
-
-    return PhysicalLoad(
-        id=f"runalyze_{act_id}",
-        date=day,
-        duration_minutes=duration_min,
-        rpe_score=rpe,
-        status=WorkoutStatus.COMPLETED,
-        title=title,
-        distance_km=distance_km,
-        pace=pace,
-        avg_speed_kmh=avg_speed_kmh,
-        avg_hr=avg_hr,
+    brain: BrainManager = request.app.state.brain
+    fact = await brain.update_fact(
+        fact_id, text=body.text, category=body.category, pinned=body.pinned
     )
+    if fact is None:
+        raise HTTPException(status_code=404, detail="Fact not found")
+    return {"fact": fact}
 
 
-async def _sync_runalyze_activities(db: SQLiteManager, token: str) -> int:
-    """Pull recent Runalyze activities and upsert them as completed workouts.
-
-    Pages through ``/api/v1/activity?page=N`` (newest first) until an empty page,
-    the page cap, or activities older than the lookback window. ``create_physical_load``
-    is an INSERT-OR-REPLACE, so re-syncing refreshes edited activities. Returns the
-    number of workouts created or updated. Raises ``httpx`` errors to the caller.
-    """
-    import httpx
-
-    cutoff = date.today() - timedelta(days=settings.runalyze_sync_lookback_days)
-    base_url = "https://runalyze.com/api/v1/activity"
-    headers = {"token": token, "Accept": "application/json"}
-    synced = 0
-
-    # Runalyze can be slow; use a generous timeout instead of httpx's 5s default.
-    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
-        for page in range(1, settings.runalyze_sync_max_pages + 1):
-            resp = await client.get(base_url, headers=headers, params={"page": page})
-            resp.raise_for_status()
-            data = resp.json()
-            activities = data if isinstance(data, list) else data.get("data", [])
-            if not activities:
-                break
-
-            reached_cutoff = False
-            for act in activities:
-                load = _runalyze_activity_to_load(act)
-                if load is None:
-                    continue
-                if load.date < cutoff:
-                    reached_cutoff = True
-                    continue
-                
-                try:
-                    existing = await db.get_physical_load(load.id)
-                    if existing.note:
-                        load.note = existing.note
-                except RecordNotFoundError:
-                    pass
-                
-                await db.create_physical_load(load)  # INSERT OR REPLACE = upsert
-                synced += 1
-
-            if reached_cutoff:
-                break
-
-    return synced
+@app.delete("/brain/{fact_id}")
+async def delete_brain_fact(request: Request, fact_id: str) -> dict[str, Any]:
+    brain: BrainManager = request.app.state.brain
+    await brain.delete_fact(fact_id)
+    return {"status": "deleted", "id": fact_id}
 
 
-async def _runalyze_sync_loop(app: FastAPI) -> None:
-    """Background loop: pull Runalyze activities on startup, then every interval.
-
-    Re-reads the token each cycle (so it can be added without a restart) and
-    swallows per-cycle errors so a transient failure never kills the loop.
-    """
-    interval = settings.runalyze_sync_interval_min * 60
-    db: SQLiteManager = app.state.sqlite
-    while True:
-        token = _read_runalyze_token()
-        if token:
-            try:
-                n = await _sync_runalyze_activities(db, token)
-                if n:
-                    logger.info("Runalyze auto-sync: %d workout(s) imported/updated", n)
-            except asyncio.CancelledError:
-                raise
-            except Exception:  # noqa: BLE001 - never let the loop die
-                logger.warning("Runalyze auto-sync failed; retrying next cycle", exc_info=True)
-        await asyncio.sleep(interval)
-
-
-@app.post("/workouts/sync/runalyze")
-async def sync_runalyze(request: Request) -> dict[str, Any]:
-    """Fetch recent activities from Runalyze and upsert them as completed workouts."""
-    import httpx
-
-    db: SQLiteManager = request.app.state.sqlite
-    token = _read_runalyze_token()
-    if not token:
-        raise HTTPException(
-            status_code=400,
-            detail=f"{settings.runalyze_token_env} bulunamadı. Lütfen .env dosyanıza ekleyin.",
-        )
-
+@app.post("/brain/extract")
+async def extract_brain_facts(
+    request: Request, body: BrainExtractRequest
+) -> dict[str, Any]:
+    """Mine the supplied recent chat history for durable facts (on-demand)."""
+    brain: BrainManager = request.app.state.brain
     try:
-        imported = await _sync_runalyze_activities(db, token)
-    except httpx.TimeoutException:
-        logger.warning("Runalyze API request timed out")
-        raise HTTPException(
-            status_code=504,
-            detail="Runalyze API zaman aşımına uğradı. Lütfen biraz sonra tekrar deneyin.",
-        )
-    except httpx.HTTPStatusError as exc:
-        logger.warning("Runalyze API returned %s", exc.response.status_code)
-        detail = (
-            "Token geçersiz veya yetkisiz."
-            if exc.response.status_code in (401, 403)
-            else f"HTTP {exc.response.status_code}"
-        )
-        raise HTTPException(status_code=502, detail=f"Runalyze API Hatası: {detail}")
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Runalyze API request failed")
-        raise HTTPException(status_code=502, detail=f"Runalyze API Hatası: {exc}")
-
-    return {"imported": imported}
-
-
-@app.patch("/workouts/{load_id}")
-async def update_workout(request: Request, load_id: str, body: WorkoutUpdateRequest) -> dict[str, Any]:
-    db: SQLiteManager = request.app.state.sqlite
-    try:
-        load = await db.get_physical_load(load_id)
-    except RecordNotFoundError:
-        raise HTTPException(status_code=404, detail="Workout not found")
-    updates = body.model_dump(exclude_unset=True)
-    for field_name, value in updates.items():
-        setattr(load, field_name, value)
-    await db.update_physical_load(load)
-    return load.model_dump(mode="json")
-
-
-@app.delete("/workouts/{load_id}")
-async def delete_workout(request: Request, load_id: str) -> dict[str, Any]:
-    db: SQLiteManager = request.app.state.sqlite
-    try:
-        await db.delete_physical_load(load_id)
-    except RecordNotFoundError:
-        raise HTTPException(status_code=404, detail="Workout not found")
-    return {"status": "deleted", "id": load_id}
+        added = await brain.extract_from_messages(body.history)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    return {"added": added, "count": len(added)}
 
 
 # --------------------------------------------------------------------------- #
@@ -1628,6 +1346,105 @@ async def download_idea_file(
     if mat is None or mat.kind != "file" or not mat.source or not Path(mat.source).exists():
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(mat.source, filename=mat.name)
+
+
+# --------------------------------------------------------------------------- #
+# Notes (Notion-style nested pages; rich-text HTML, page-in-page ≤ 3 levels)
+# --------------------------------------------------------------------------- #
+class NoteCreateRequest(BaseModel):
+    title: str = ""
+    content: str = ""
+    parent_id: Optional[str] = None
+
+
+class NoteUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+
+
+async def _get_note_or_404(db: SQLiteManager, note_id: str) -> NotePage:
+    try:
+        return await db.get_note(note_id)
+    except RecordNotFoundError:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+
+@app.get("/notes")
+async def list_notes(request: Request) -> list[dict[str, Any]]:
+    db: SQLiteManager = request.app.state.sqlite
+    notes = await db.list_notes()
+    return [n.model_dump(mode="json") for n in notes]
+
+
+@app.get("/notes/{note_id}")
+async def get_note(request: Request, note_id: str) -> dict[str, Any]:
+    db: SQLiteManager = request.app.state.sqlite
+    note = await _get_note_or_404(db, note_id)
+    return note.model_dump(mode="json")
+
+
+@app.get("/notes/{note_id}/children")
+async def list_note_children(request: Request, note_id: str) -> list[dict[str, Any]]:
+    db: SQLiteManager = request.app.state.sqlite
+    children = await db.list_child_notes(note_id)
+    return [n.model_dump(mode="json") for n in children]
+
+
+@app.post("/notes")
+async def create_note(request: Request, body: NoteCreateRequest) -> dict[str, Any]:
+    db: SQLiteManager = request.app.state.sqlite
+    depth = 0
+    if body.parent_id:
+        parent = await _get_note_or_404(db, body.parent_id)
+        if parent.depth >= 2:
+            raise HTTPException(
+                status_code=400,
+                detail="En fazla 3 seviye iç içe sayfa olabilir (sayfa→sayfa→sayfa).",
+            )
+        depth = parent.depth + 1
+    note = NotePage(
+        title=body.title, content=body.content, parent_id=body.parent_id, depth=depth
+    )
+    await db.upsert_note(note)
+    return note.model_dump(mode="json")
+
+
+@app.patch("/notes/{note_id}")
+async def update_note(
+    request: Request, note_id: str, body: NoteUpdateRequest
+) -> dict[str, Any]:
+    db: SQLiteManager = request.app.state.sqlite
+    note = await _get_note_or_404(db, note_id)
+    updates = body.model_dump(exclude_unset=True)
+    for field_name, value in updates.items():
+        setattr(note, field_name, value)
+    note.updated_at = datetime.now().astimezone()
+    await db.upsert_note(note)
+    return note.model_dump(mode="json")
+
+
+@app.delete("/notes/{note_id}")
+async def delete_note(request: Request, note_id: str) -> dict[str, str]:
+    db: SQLiteManager = request.app.state.sqlite
+    await db.delete_note(note_id)
+    return {"status": "deleted", "id": note_id}
+
+
+# --------------------------------------------------------------------------- #
+# Inline editor uploads (images/files embedded directly in note/idea bodies)
+# --------------------------------------------------------------------------- #
+@app.post("/uploads/inline")
+async def upload_inline(file: UploadFile = File(...)) -> dict[str, Any]:
+    """Save an editor-embedded asset and return a servable URL."""
+    settings.uploads_dir.mkdir(parents=True, exist_ok=True)
+    filename = Path(file.filename or "file").name
+    stored = f"{uuid4().hex}_{filename}"
+    dest = settings.uploads_dir / stored
+    content = await file.read()
+    await asyncio.to_thread(dest.write_bytes, content)
+    suffix = Path(filename).suffix.lower()
+    kind = "image" if suffix in _IMAGE_EXTS else "file"
+    return {"url": f"/uploads/files/{stored}", "name": filename, "kind": kind}
 
 
 __all__ = ["app"]

@@ -28,8 +28,13 @@ class RouteDecision(BaseModel):
 
     next_node: RouteTarget = Field(
         description=(
-            "Which node should handle this message next. Exactly one of "
-            "'chat_node', 'pdf_tool_node', or 'task_tool_node'."
+            "Which node should handle this message next. Choose 'research_node' "
+            "ONLY when the user explicitly asks for in-depth web research / a "
+            "researched report on a topic (e.g. 'araştır', 'derinlemesine "
+            "araştır', 'research X for me'). For ordinary questions answered from "
+            "knowledge or retrieved context use 'chat_node'. Other nodes handle "
+            "tasks ('task_tool_node'), PDFs ('pdf_tool_node'), study sessions "
+            "('session_node') and idea extraction ('idea_extractor_node')."
         )
     )
 
@@ -191,67 +196,86 @@ Output: [{{ "operation": "create", "title": "Termodinamik Çalışması", "notes
 """
 
 
-class WorkoutPlanItem(BaseModel):
-    """One training session within a (possibly multi-day) plan."""
+# --------------------------------------------------------------------------- #
+# Deep Research prompts (used by tools/agentic_tools/deep_research.py)
+# --------------------------------------------------------------------------- #
+RESEARCH_PLAN_PROMPT = """\
+You are a meticulous research strategist. Break the user's question into a short \
+research plan: list the key sub-questions and angles worth investigating. The \
+current date is {now}.
 
-    model_config = ConfigDict(extra="forbid")
+Question: {question}
 
-    date: Optional[str] = Field(
-        default=None,
-        description=(
-            "ISO date (YYYY-MM-DD). Resolve relative days against the current date "
-            "in the system prompt. Null → today."
-        ),
-    )
-    duration_minutes: int = Field(gt=0, description="Session length in minutes.")
-    rpe_score: int = Field(
-        ge=1, le=10, description="Perceived exertion 1-10; estimate from intensity."
-    )
-    note: Optional[str] = Field(default=None, description="Optional label (e.g. 'tempo run').")
+Reply with 3-6 short bullet points (no preamble)."""
 
+RESEARCH_QUERY_PROMPT = """\
+You generate web-search queries for an iterative research engine. The current \
+date is {now}.
 
-class WorkoutPlan(BaseModel):
-    """A batch of training sessions parsed from text or an attached plan file."""
+Question: {question}
 
-    model_config = ConfigDict(extra="forbid")
+Report so far (may be empty):
+{report}
 
-    workouts: list[WorkoutPlanItem] = Field(default_factory=list)
+This is research round {round_num}. Produce {num_queries} diverse, specific web \
+search queries that would fill the biggest remaining gaps. Prefer precise \
+keyword queries over natural-language questions. Return ONLY the queries, one \
+per line, with no numbering, quotes or commentary."""
 
+RESEARCH_EXTRACT_PROMPT = """\
+You extract information relevant to a research goal from a web page.
 
-WORKOUT_PLAN_SYSTEM_PROMPT = """\
-[Context]
-Athena tracks physical training alongside academic tasks. Users provide training descriptions, workout logs, or multi-day plans in free-form text. The current date is {now}. The user has already chosen to log/plan training — structure it, do not ask for confirmation.
+Research goal: {goal}
 
-[Role]
-You are a highly analytical sports-science parsing engine. You map unstructured text into a strict array of workout sessions.
+Read the page content provided by the user and return a STRICT JSON object:
+{{"summary": "<2-4 sentence summary of what is relevant to the goal>",
+  "evidence": "<key facts, figures or quotes that support the goal, or empty>",
+  "relevant": true|false}}
 
-[Intent/Instruction]
-Extract every physical session into structured form. Parse dates and durations, label the session, and estimate the RPE (Rate of Perceived Exertion).
+If the page is irrelevant to the goal, set "relevant" to false and keep the \
+summary short. Return ONLY the JSON object."""
 
-[Strictness/Style]
-- Produce exactly one entry in 'workouts' per physical session mentioned.
-- Expand EVERY dated session in a multi-day plan into its own entry — never collapse a week into one row.
-- Resolve relative days ("today", "Monday", "yarın") to ISO 8601 dates against {now}. If a session has no stated day, use today.
-- Estimate RPE on a 1-10 scale from intensity cues ("easy/kolay"≈3, "tempo"≈7, "hard/zorlu"≈9). Default to 5 when no intensity is given.
-- 'duration_minutes' must be a positive integer; infer a reasonable length from context only when the user implies one, otherwise make a sensible estimate for the described session.
-- Never refuse. Only return an empty array when the text truly contains no training content at all.
+RESEARCH_SYNTHESIZE_PROMPT = """\
+You are writing and continuously improving a research report.
 
-[Parameters/Output Format]
-- date: ISO 8601 string or null.
-- duration_minutes: integer (> 0).
-- rpe_score: integer (1-10).
-- note: short label/description of the session.
+Question: {question}
 
-[Examples]
-User: "Bugün 45 dk tempo koşusu yaptım."
-Output: [{{ "date": "<today's date>", "duration_minutes": 45, "rpe_score": 7, "note": "tempo koşusu" }}]
+Current report (may be empty):
+{report}
 
-User: "Pazartesi 30 dk kolay koşu, Çarşamba 60 dk interval."
-Output: [
-  {{ "date": "<Monday's date>", "duration_minutes": 30, "rpe_score": 3, "note": "kolay koşu" }},
-  {{ "date": "<Wednesday's date>", "duration_minutes": 60, "rpe_score": 8, "note": "interval" }}
-]
-"""
+New findings from freshly read sources:
+{new_findings}
+
+Integrate the new findings into an updated, well-structured Markdown report. \
+Keep what is still correct, add new information, resolve contradictions, and \
+cite sources inline as [n] where helpful. Do not fabricate. Return ONLY the \
+updated report."""
+
+RESEARCH_STOP_PROMPT = """\
+You decide whether a research report is comprehensive enough to stop.
+
+Question: {question}
+
+Report so far:
+{report}
+
+This was round {round_num} of at most {max_rounds}. If the report already \
+answers the question thoroughly with good coverage, answer "YES". If important \
+gaps remain and more searching would clearly help, answer "NO". Reply with only \
+YES or NO."""
+
+RESEARCH_FINAL_PROMPT = """\
+You are finalizing a research report for the user. The current date is {now}.
+
+Question: {question}
+
+Working report:
+{report}
+
+Polish this into a clear, comprehensive, well-structured final Markdown report \
+in the user's language (usually Turkish). Use headings, bullet points and a \
+short conclusion. Keep inline source markers [n] if present. Do not invent new \
+facts. Return ONLY the final report."""
 
 
 class IdeaExtraction(BaseModel):
@@ -334,7 +358,7 @@ Output: {{ "date": "<yesterday's date>", "start_time": "14:00", "end_time": "16:
 
 CHAT_SYSTEM_PROMPT = """\
 [Context]
-Athena is a focused, rigorous, and supportive AI assistant that acts as the user's academic and productivity guide. It also manages their tasks, study sessions, workouts, and ideas via slash commands, so the user may ask about how to capture or organize work.
+Athena is a focused, rigorous, and supportive AI assistant that acts as the user's academic and productivity guide. It also manages their tasks, study sessions, and ideas via slash commands, so the user may ask about how to capture or organize work.
 
 [Role]
 You are an expert tutor, a disciplined planner, and an academic mentor.
@@ -346,8 +370,15 @@ Provide correct, concise, and genuinely educational answers. Help the user learn
 - Structure clearly: short paragraphs, bulleted lists, and LaTeX-style math where applicable.
 - NEVER invent facts, citations, or specifics; if you are unsure, say so plainly rather than guessing.
 - Ground answers in the retrieved context when it is provided, but do not mention the "context" or "documents" to the user unless it is genuinely necessary.
+- Use the known long-term facts about the user to personalise answers naturally; never recite them back verbatim or announce that you "remember" them.
 - If the user describes something better captured as a task/idea/session, you may suggest the relevant slash command (e.g. /görev, /plan, /fikir), but keep it brief.
 - Answer in the user's language (usually Turkish) with a professional yet encouraging tone.
+
+[Known facts about the user (long-term memory)]
+{memory}
+
+[Retrieved context]
+{context}
 
 [Parameters/Output Format]
 - A well-formatted Markdown response.
@@ -361,12 +392,15 @@ __all__ = [
     "IDEA_EXTRACTION_SYSTEM_PROMPT",
     "SESSION_EXTRACTION_SYSTEM_PROMPT",
     "TASK_EXTRACTION_SYSTEM_PROMPT",
-    "WORKOUT_PLAN_SYSTEM_PROMPT",
+    "RESEARCH_PLAN_PROMPT",
+    "RESEARCH_QUERY_PROMPT",
+    "RESEARCH_EXTRACT_PROMPT",
+    "RESEARCH_SYNTHESIZE_PROMPT",
+    "RESEARCH_STOP_PROMPT",
+    "RESEARCH_FINAL_PROMPT",
     "IdeaExtraction",
     "IdeaExtractionList",
     "SessionExtraction",
     "TaskExtraction",
     "TaskExtractionList",
-    "WorkoutPlan",
-    "WorkoutPlanItem",
 ]

@@ -35,31 +35,14 @@ export interface Task {
   tags: string[];
 }
 
-export interface Workout {
+export interface BrainFact {
   id: string;
-  date: string;
-  duration_minutes: number;
-  rpe_score: number | null;
-  status: "planned" | "completed";
-  title: string | null;
-  distance_km: number | null;
-  pace: string | null;
-  avg_speed_kmh: number | null;
-  avg_hr: number | null;
-  note: string | null;
-}
-
-export interface WorkoutInput {
-  duration_minutes: number;
-  rpe_score?: number | null;
-  date?: string;
-  status?: "planned" | "completed";
-  title?: string | null;
-  distance_km?: number | null;
-  pace?: string | null;
-  avg_speed_kmh?: number | null;
-  avg_hr?: number | null;
-  note?: string | null;
+  text: string;
+  category: string;
+  source: string;
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PdfJob {
@@ -210,37 +193,26 @@ export const deleteTask = (id: string) =>
   jsend<{ status: string }>(`/tasks/${id}`, "DELETE");
 
 // --------------------------------------------------------------------------- //
-// Workouts
+// Brain (long-term memory)
 // --------------------------------------------------------------------------- //
-export const getWorkouts = () =>
-  jget<{ workouts: Workout[] }>("/workouts").then((d) => d.workouts);
+export const getBrainFacts = () =>
+  jget<{ facts: BrainFact[] }>("/brain").then((d) => d.facts);
 
-export const createWorkout = (w: WorkoutInput) =>
-  jsend<{ physical_load: Workout }>("/workouts", "POST", w);
+export const createBrainFact = (text: string, category = "fact", pinned = false) =>
+  jsend<{ fact: BrainFact }>("/brain", "POST", { text, category, pinned }).then(
+    (d) => d.fact
+  );
 
-export const updateWorkout = (id: string, patch: Partial<WorkoutInput>) =>
-  jsend<Workout>(`/workouts/${id}`, "PATCH", patch);
+export const updateBrainFact = (
+  id: string,
+  patch: Partial<Pick<BrainFact, "text" | "category" | "pinned">>
+) => jsend<{ fact: BrainFact }>(`/brain/${id}`, "PATCH", patch).then((d) => d.fact);
 
-export const completeWorkout = (id: string) =>
-  jsend<Workout>(`/workouts/${id}/complete`, "POST");
+export const deleteBrainFact = (id: string) =>
+  jsend<{ status: string }>(`/brain/${id}`, "DELETE");
 
-export const deleteWorkout = (id: string) =>
-  jsend<{ status: string }>(`/workouts/${id}`, "DELETE");
-
-export const uploadWorkoutFile = (file: File) => {
-  const data = new FormData();
-  data.append("file", file);
-  return fetch(`${API_URL}/workouts/upload`, {
-    method: "POST",
-    body: data,
-  }).then((r) => {
-    if (!r.ok) throw new Error("upload failed");
-    return r.json();
-  }) as Promise<{ imported: number }>;
-};
-
-export const syncRunalyze = () => 
-  jsend<{ imported: number }>("/workouts/sync/runalyze", "POST");
+export const extractBrainFacts = (history: { role: string; text: string }[]) =>
+  jsend<{ added: BrainFact[]; count: number }>("/brain/extract", "POST", { history });
 
 // --------------------------------------------------------------------------- //
 // PDF jobs + usage
@@ -409,6 +381,44 @@ export async function uploadIdeaFile(id: string, file: File): Promise<Idea> {
 
 export const ideaFileUrl = (id: string, materialId: string) =>
   `${API_URL}/ideas/${id}/materials/${materialId}/download`;
+
+// --------------------------------------------------------------------------- //
+// Notes (Notion-style nested pages)
+// --------------------------------------------------------------------------- //
+export interface NotePage {
+  id: string;
+  title: string;
+  content: string;
+  parent_id: string | null;
+  depth: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getNotes = () => jget<NotePage[]>("/notes");
+export const getNote = (id: string) => jget<NotePage>(`/notes/${id}`);
+export const getNoteChildren = (id: string) =>
+  jget<NotePage[]>(`/notes/${id}/children`);
+export const createNote = (title = "", parentId?: string, content = "") =>
+  jsend<NotePage>("/notes", "POST", { title, content, parent_id: parentId ?? null });
+export const updateNote = (id: string, patch: { title?: string; content?: string }) =>
+  jsend<NotePage>(`/notes/${id}`, "PATCH", patch);
+export const deleteNotePage = (id: string) =>
+  jsend<{ status: string }>(`/notes/${id}`, "DELETE");
+
+// Inline editor asset upload (images/files embedded in note/idea bodies).
+export interface InlineUploadResult {
+  url: string;
+  name: string;
+  kind: string;
+}
+export async function uploadInline(file: File): Promise<InlineUploadResult> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_URL}/uploads/inline`, { method: "POST", body: form });
+  if (!res.ok) throw new Error(`inline upload ${res.status}`);
+  return res.json();
+}
 
 // --------------------------------------------------------------------------- //
 // Tags
