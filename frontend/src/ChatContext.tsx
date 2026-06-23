@@ -220,7 +220,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             message,
             attachment_ids: ids,
             model: opts.model,
-            history: baseLines.slice(-10),
+            // Backend expects list[dict[str, str]]; strip non-string fields
+            // (ts is a number, kind is optional) or Pydantic rejects with 422.
+            history: baseLines
+              .slice(-10)
+              .map((l) => ({ role: l.role, text: l.text })),
             system_prompt: opts.systemPrompt,
             mentions: opts.mentions ?? [],
           }),
